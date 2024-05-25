@@ -2,6 +2,7 @@ package main
 
 import (
 	"GitX/utils/file_operations"
+	"GitX/utils/vcs_operations"
 	"fmt"
 	"os"
 )
@@ -13,7 +14,7 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 {
-		fmt.Println("Usage: gitx <command> [init, add, commit, status]")
+		fmt.Println("Usage: gitx <command> [init, add, commit, status, branch")
 		os.Exit(1)
 	}
 
@@ -42,6 +43,29 @@ func main() {
 	case "status":
 		// Call StatusHandler from the utils package
 		file_operations.StatusHandler(stagingArea)
+	case "branch":
+		if len(args) != 2 {
+			fmt.Println("Usage: gitx branch <create/list/switch/delete>")
+			os.Exit(1)
+		}
+		// Handle branch-related logic using functions from vcs_operations
+		switch args[1] {
+		case "create":
+			// Call CreateBranch function
+			vcs_operations.CreateBranch(args[2])
+		case "list":
+			// Call ListBranches function
+			vcs_operations.ListBranches()
+		case "switch":
+			// Call SwitchBranch function
+			vcs_operations.SwitchBranch(args[2])
+		case "delete":
+			// Call DeleteBranch function
+			vcs_operations.DeleteBranch(args[2])
+		default:
+			fmt.Printf("gitx branch: %s is not a valid subcommand\n", args[1])
+			os.Exit(1)
+		}
 	default:
 		fmt.Printf("gitx: %s is not a valid command\n", command)
 		os.Exit(1)
