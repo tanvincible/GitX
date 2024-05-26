@@ -1,20 +1,19 @@
-package main
+package vcs_operations
 
 import (
 	"GitX/models"
 	"crypto/sha1"
 	"encoding/hex"
-	"fmt"
 )
 
-type Node struct {
+type MerkleNode struct {
 	Commit *models.Commit
-	Left   *Node
-	Right  *Node
+	Left   *MerkleNode
+	Right  *MerkleNode
 }
 
-func NewNode(left, right *Node, commit *models.Commit) *Node {
-	node := &Node{}
+func NewMerkleNode(left, right *MerkleNode, commit *models.Commit) *MerkleNode {
+	node := &MerkleNode{}
 
 	if left == nil && right == nil {
 		hash := sha1.Sum([]byte(commit.ID))
@@ -32,20 +31,20 @@ func NewNode(left, right *Node, commit *models.Commit) *Node {
 	return node
 }
 
-func NewMerkleTree(commits []*models.Commit) *Node {
-	var nodes []Node
+func NewMerkleTree(commits []*models.Commit) *MerkleNode {
+	var nodes []MerkleNode
 
 	// Create leaf nodes
 	for _, commit := range commits {
-		nodes = append(nodes, *NewNode(nil, nil, commit))
+		nodes = append(nodes, *NewMerkleNode(nil, nil, commit))
 	}
 
 	for len(nodes) > 1 {
-		var level []Node
+		var level []MerkleNode
 
 		for i := 0; i < len(nodes); i += 2 {
 			if i+1 < len(nodes) {
-				level = append(level, *NewNode(&nodes[i], &nodes[i+1], nil))
+				level = append(level, *NewMerkleNode(&nodes[i], &nodes[i+1], nil))
 			} else {
 				level = append(level, nodes[i])
 			}
@@ -55,38 +54,4 @@ func NewMerkleTree(commits []*models.Commit) *Node {
 	}
 
 	return &nodes[0]
-}
-
-func main() {
-	// Sample commits
-	commits := []*models.Commit{
-		{ID: "Commit 1"},
-		{ID: "Commit 2"},
-		{ID: "Commit 3"},
-		{ID: "Commit 4"},
-	}
-
-	// Create a new Merkle tree from the commits
-	root := NewMerkleTree(commits)
-
-	// Print the Merkle tree
-	printMerkleTree(root, 0)
-}
-
-func printMerkleTree(node *Node, level int) {
-	if node == nil {
-		return
-	}
-
-	format := ""
-	for i := 0; i < level; i++ {
-		format += "\t"
-	}
-
-	format += "---[ "
-	level++
-	fmt.Printf(format+"%s\n", node.Commit.ID)
-
-	printMerkleTree(node.Left, level)
-	printMerkleTree(node.Right, level)
 }

@@ -14,7 +14,7 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 {
-		fmt.Println("Usage: gitx <command> [init, add, commit, status, branch")
+		fmt.Println("Usage: gitx <command> [init, add, commit, status, branch, merge, squash, stash]")
 		os.Exit(1)
 	}
 
@@ -66,6 +66,32 @@ func main() {
 			fmt.Printf("gitx branch: %s is not a valid subcommand\n", args[1])
 			os.Exit(1)
 		}
+	case "merge":
+		if len(args) != 2 {
+			fmt.Println("Usage: gitx merge <branch-name>")
+			os.Exit(1)
+		}
+		// Call MergeBranch function
+		if err := vcs_operations.MergeBranch(args[1]); err != nil {
+			fmt.Printf("Error merging branch: %v\n", err)
+			os.Exit(1)
+		}
+	case "squash":
+		if len(args) != 3 {
+			fmt.Println("Usage: gitx squash <base-commit> <target-commit>")
+			os.Exit(1)
+		}
+		fmt.Printf("Squashing commits from %s to %s\n", args[1], args[2]) // Debug print
+		if err := vcs_operations.SquashCommits(args[1], args[2]); err != nil {
+			fmt.Printf("Error squashing commits: %v\n", err)
+			os.Exit(1)
+		}
+	case "stash":
+		if err := vcs_operations.Stash(); err != nil {
+			fmt.Printf("Error stashing changes: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Println("Changes stashed successfully")
 	default:
 		fmt.Printf("gitx: %s is not a valid command\n", command)
 		os.Exit(1)
