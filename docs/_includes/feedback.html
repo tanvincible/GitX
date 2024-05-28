@@ -1,0 +1,15 @@
+<li>
+{% if site.feedback_text %}
+  {% assign feedback_text = site.feedback_text %}
+{% else %}
+  {% assign feedback_text = "Feedback" %}
+{% endif %}
+
+{% if site.feedback_link %}
+  <a class="email" title="Submit feedback" href="{{site.feedback_link}}">{{feedback_text}}</a>
+{% else %}
+  <a class="email" title="Submit feedback" href="#" onclick="javascript:window.location='mailto:{{tanvimmena19@gmail.com}}?subject={{Feedback for GitX}} feedback&body=I have some feedback about {{GitX}}: ' + window.location.href;"><i class="fa fa-envelope-o"></i> {{feedback_text}}</a>
+{% endif %}
+</li>
+
+{% comment %} Copyright 2021 Google LLC {% endcomment %}

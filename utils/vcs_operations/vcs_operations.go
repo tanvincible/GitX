@@ -2,6 +2,7 @@ package vcs_operations
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -26,45 +27,59 @@ func UpdateHEAD(commitHash string) {
 
 // CreateBranch creates a new Git branch.
 func CreateBranch(branchName string) error {
-	branchDir := filepath.Join(".gitx", "branches", branchName)
+	// Define the branch directory path
+	branchDir := filepath.Join(".gitx", "refs", "heads", branchName)
+
+	// Check if the branch already exists
 	if _, err := os.Stat(branchDir); err == nil {
 		return fmt.Errorf("branch %s already exists", branchName)
 	}
 
+	// Get the current branch name
 	currentBranch, err := getCurrentBranch()
 	if err != nil {
 		return err
 	}
 
-	currentBranchDir := filepath.Join(".gitx", "branches", currentBranch)
+	// Define the path to the current branch directory
+	currentBranchDir := filepath.Join(".gitx", "refs", "heads", currentBranch)
+
+	// Check if the current branch directory exists
 	if _, err := os.Stat(currentBranchDir); os.IsNotExist(err) {
 		return fmt.Errorf("current branch directory does not exist")
 	}
 
+	// Create the new branch directory
+	if err := os.MkdirAll(branchDir, os.ModePerm); err != nil {
+		return fmt.Errorf("failed to create branch directory: %v", err)
+	}
+
+	// Copy the contents from the current branch directory to the new branch directory
 	if err := copyDir(currentBranchDir, branchDir); err != nil {
 		return fmt.Errorf("failed to create branch: %v", err)
 	}
 
+	// Indicate successful branch creation
 	fmt.Printf("Created branch: %s\n", branchName)
 	return nil
 }
 
-// ListBranches lists all Git branches.
-func ListBranches() error {
-	branchesDir := filepath.Join(".gitx", "branches")
-	branches, err := os.ReadDir(branchesDir)
+func ListBranches() {
+	gitxDir := ".gitx"
+	refsHeadsDir := filepath.Join(gitxDir, "refs", "heads")
+
+	files, err := os.ReadDir(refsHeadsDir)
 	if err != nil {
-		return fmt.Errorf("failed to list branches: %v", err)
+		log.Fatalf("Error reading refs/heads directory: %v", err)
 	}
 
 	fmt.Println("Branches:")
-	for _, branch := range branches {
-		if branch.IsDir() {
-			fmt.Println(branch.Name())
+	for _, file := range files {
+		if file.IsDir() {
+			continue
 		}
+		fmt.Println(file.Name())
 	}
-
-	return nil
 }
 
 // SwitchBranch switches to the specified Git branch.
@@ -247,6 +262,31 @@ func copyDir(src, dst string) error {
 
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+// copyFile copies a single file from the source to the destination.
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("failed to open source file: %v", err)
+	}
+	defer sourceFile.Close()
+
+	destinationFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("failed to create destination file: %v", err)
+	}
+	defer destinationFile.Close()
+
+	if _, err := io.Copy(destinationFile, sourceFile); err != nil {
+		return fmt.Errorf("failed to copy file: %v", err)
+	}
+
+	if err := destinationFile.Sync(); err != nil {
+		return fmt.Errorf("failed to sync file: %v", err)
 	}
 
 	return nil
