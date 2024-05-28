@@ -20,25 +20,49 @@ func InitHandler(directory string) {
 		log.Fatalf("Error creating repository directory: %v", err)
 	}
 
+	// Create .gitx directory inside the repository directory
+	gitxDir := filepath.Join(directory, ".gitx")
+	if err := os.MkdirAll(gitxDir, os.ModePerm); err != nil {
+		log.Fatalf("Error creating .gitx directory: %v", err)
+	}
+
 	// Create metadata file
-	metadataFile := filepath.Join(directory, "metadata.json")
+	metadataFile := filepath.Join(gitxDir, "metadata.json")
 	if _, err := os.Create(metadataFile); err != nil {
 		log.Fatalf("Error creating metadata file: %v", err)
 	}
 
-	// Create default branch
-	//
+	// Create HEAD file
+	headFile := filepath.Join(gitxDir, "HEAD")
+	if err := os.WriteFile(headFile, []byte("refs/heads/main"), 0644); err != nil {
+		log.Fatalf("Error creating HEAD file: %v", err)
+	}
+
+	// Create refs/heads directory
+	refsHeadsDir := filepath.Join(gitxDir, "refs", "heads")
+	if err := os.MkdirAll(refsHeadsDir, os.ModePerm); err != nil {
+		log.Fatalf("Error creating refs/heads directory: %v", err)
+	}
+
+	// Create main branch file
+	mainBranchFile := filepath.Join(refsHeadsDir, "main")
+	if _, err := os.Create(mainBranchFile); err != nil {
+		log.Fatalf("Error creating main branch file: %v", err)
+	}
+
+	// Create commits directory
+	commitsDir := filepath.Join(gitxDir, "commits")
+	if err := os.MkdirAll(commitsDir, os.ModePerm); err != nil {
+		log.Fatalf("Error creating commits directory: %v", err)
+	}
 
 	// Set up ignore file
-	ignoreFile := filepath.Join(directory, ".gitignore")
+	ignoreFile := filepath.Join(directory, ".gitxignore")
 	if _, err := os.Create(ignoreFile); err != nil {
 		log.Fatalf("Error creating ignore file: %v", err)
 	}
 
-	// Initialize empty commit object
-	//
-
-	fmt.Printf("Initialized repository in %s\n", directory)
+	fmt.Printf("Initialized empty repository in %s\n", directory)
 }
 
 func AddHandler(filePath string, stagingArea map[string]string) {

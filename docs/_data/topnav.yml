@@ -1,0 +1,28 @@
+## Topnav single links
+topnav:
+- title: Topnav
+  items:
+    - title: GitHub
+      external_url: https://github.com/TanviPooranmal/GitX
+
+#Topnav dropdowns
+topnav_dropdowns:
+- title: Topnav dropdowns
+  folders:
+    - title: Connect
+      folderitems:
+        - title: GitHub
+          external_url: https://github.com/TanviPooranmal
+        - title: LinkedIn
+          external_url: https://www.linkedin.com/in/tanvi-pooranmal-meena/
+        - title: Twitter
+          external_url: https://x.com/TanviPooranmal
+    - title: Support
+      folderitems:
+        - title: Report Bugs
+          external_url: https://github.com/TanviPooranmal
+        - title: Suggest Improvements
+          external_url: https://www.linkedin.com/in/tanvi-pooranmal-meena/
+        - title: FAQS
+          url: /FAQS.html
+# Copyright 2024 Tanvi Pooranmal Meena

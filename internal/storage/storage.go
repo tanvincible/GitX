@@ -9,13 +9,18 @@ import (
 
 // WriteFile writes data to a file.
 func WriteFile(directory, filename string, data []byte) error {
-	// Create the directory if it doesn't exist
-	if err := os.MkdirAll(directory, 0755); err != nil {
-		return err
+	var filePath string
+	if directory == "" {
+		filePath = filename
+	} else {
+		// Create the directory if it doesn't exist
+		if err := os.MkdirAll(directory, 0755); err != nil {
+			return err
+		}
+		filePath = filepath.Join(directory, filename)
 	}
 
 	// Open the file for writing
-	filePath := filepath.Join(directory, filename)
 	file, err := os.Create(filePath)
 	if err != nil {
 		return err

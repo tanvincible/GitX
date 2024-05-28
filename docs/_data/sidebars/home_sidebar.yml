@@ -1,0 +1,82 @@
+# This is your sidebar TOC. The sidebar code loops through sections here and provides the appropriate formatting.
+
+entries:
+- title: Sidebar
+  levels: one
+  folders:
+
+  - title: Overview
+    output: web
+    folderitems:
+    - title: Welcome to GitX
+      url: /Overview.html#welcome-to-gitx
+      output: web
+    - title: Features and Benefits
+      url: /Overview.html#features-and-benefits
+      output: web
+    - title: System Requirements
+      url: /Overview.html#system-requirements
+      output: web
+  
+  - title: Getting Started
+    output: web
+    folderitems:
+    - title: Installation Guide
+      url: Getting_Started.html#installation-guide
+      output: web
+    - title: Configuration Guide
+      url: /Getting_Started.html#configuration-guide
+      output: web
+    - title: Quick Start Guide
+      url: /Getting_Started.html#quick-start-guide
+      output: web
+  
+  - title: User Guide
+    output: web
+    folderitems:
+    - title: Basic Commands
+      url: /news.html
+      output: web
+    - title: Branching and Merging
+      url: /mydoc_introduction.html
+      output: web
+    - title: Distributed Version Control System
+      url: /p1_landing_page.html
+      output: web
+    - title: Advanced Features (currently under development)
+      url: /p1_landing_page.html
+      output: web
+  
+  - title: Tutorials
+    url: /Tutorials.html
+    output: web
+
+  - title: Command Reference
+    url: /news.html
+    output: web
+  
+  - title: Troubleshooting
+    output: web
+    folderitems:
+    - title: Common Issues and Solutions
+      url: /news.html
+      output: web
+    - title: Error Message Explanations
+      url: /mydoc_introduction.html
+      output: web
+  
+  - title: Changelog
+    url: /Changelog.html
+    output: web
+  
+  - title: Appendix
+    output: web
+    folderitems:
+    - title: Glossary
+      url: /news.html
+      output: web
+    - title: References
+      url: /mydoc_introduction.html
+      output: web
+
+# Copyright 2024 Tanvi Pooranmal Meena

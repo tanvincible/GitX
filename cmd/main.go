@@ -13,76 +13,87 @@ var stagingArea = make(map[string]string)
 func main() {
 	args := os.Args[1:]
 
-	if len(args) == 0 {
-		fmt.Println("Usage: gitx <command> [init, add, commit, status, branch, merge, squash, stash]")
+	fmt.Println("Arguments:", args) // Print out the arguments for debugging
+
+	if len(args) < 2 || args[0] != "gitx" {
+		fmt.Println("Usage: gitx <command> [init, add, commit, status, branch, merge, squash, stash, push, pull, clone]")
 		os.Exit(1)
 	}
 
-	command := args[0]
+	command := args[1]
 	switch command {
 	case "init":
-		if len(args) != 2 {
+		if len(args) != 3 {
 			fmt.Println("Usage: gitx init <directory>")
 			os.Exit(1)
 		}
 		// Call InitHandler from the utils package
-		file_operations.InitHandler(args[1])
+		file_operations.InitHandler(args[2])
 	case "add":
-		if len(args) != 2 {
+		if len(args) != 3 {
 			fmt.Println("Usage: gitx add <file-path>")
 			os.Exit(1)
 		}
-		file_operations.AddHandler(args[1], stagingArea)
+		file_operations.AddHandler(args[2], stagingArea)
 	case "commit":
-		if len(args) != 3 {
+		if len(args) != 4 {
 			fmt.Println("Usage: gitx commit <file-path> <message>")
 			os.Exit(1)
 		}
 		// Call CommitHandler from the utils package
-		file_operations.CommitHandler(args[1], stagingArea)
+		file_operations.CommitHandler(args[2], stagingArea)
 	case "status":
 		// Call StatusHandler from the utils package
 		file_operations.StatusHandler(stagingArea)
 	case "branch":
-		if len(args) != 2 {
+		if len(args) < 3 {
 			fmt.Println("Usage: gitx branch <create/list/switch/delete>")
 			os.Exit(1)
 		}
 		// Handle branch-related logic using functions from vcs_operations
-		switch args[1] {
+		branchSubCommand := args[2]
+		switch branchSubCommand {
 		case "create":
-			// Call CreateBranch function
-			vcs_operations.CreateBranch(args[2])
+			if len(args) != 4 {
+				fmt.Println("Usage: gitx branch create <branch-name>")
+				os.Exit(1)
+			}
+			vcs_operations.CreateBranch(args[3])
 		case "list":
-			// Call ListBranches function
 			vcs_operations.ListBranches()
 		case "switch":
-			// Call SwitchBranch function
-			vcs_operations.SwitchBranch(args[2])
+			if len(args) != 4 {
+				fmt.Println("Usage: gitx branch switch <branch-name>")
+				os.Exit(1)
+			}
+			vcs_operations.SwitchBranch(args[3])
 		case "delete":
-			// Call DeleteBranch function
-			vcs_operations.DeleteBranch(args[2])
+			if len(args) != 4 {
+				fmt.Println("Usage: gitx branch delete <branch-name>")
+				os.Exit(1)
+			}
+			vcs_operations.DeleteBranch(args[3])
 		default:
-			fmt.Printf("gitx branch: %s is not a valid subcommand\n", args[1])
+			fmt.Printf("gitx branch: %s is not a valid subcommand\n", branchSubCommand)
 			os.Exit(1)
 		}
 	case "merge":
-		if len(args) != 2 {
+		if len(args) != 3 {
 			fmt.Println("Usage: gitx merge <branch-name>")
 			os.Exit(1)
 		}
 		// Call MergeBranch function
-		if err := vcs_operations.MergeBranch(args[1]); err != nil {
+		if err := vcs_operations.MergeBranch(args[2]); err != nil {
 			fmt.Printf("Error merging branch: %v\n", err)
 			os.Exit(1)
 		}
 	case "squash":
-		if len(args) != 3 {
+		if len(args) != 4 {
 			fmt.Println("Usage: gitx squash <base-commit> <target-commit>")
 			os.Exit(1)
 		}
-		fmt.Printf("Squashing commits from %s to %s\n", args[1], args[2]) // Debug print
-		if err := vcs_operations.SquashCommits(args[1], args[2]); err != nil {
+		fmt.Printf("Squashing commits from %s to %s\n", args[2], args[3]) // Debug print
+		if err := vcs_operations.SquashCommits(args[2], args[3]); err != nil {
 			fmt.Printf("Error squashing commits: %v\n", err)
 			os.Exit(1)
 		}
