@@ -45,7 +45,7 @@ To clone the repository and build the project, follow these steps:
 
 ### Using `go get`
 
-Use go get if you want to:
+Use `go get` if you want to:
 
 - Use GitX as a library in another Go project.
 
@@ -114,12 +114,12 @@ GitX
     └───vcs_operations/      # Version control operations utility
             vcs_operations.go
 ```
-For a detailed project structure, click [here](Project_Structure.md).
+For the detailed project structure, click [here](Project_Structure.md).
 
 ## Documentation
 
-You can find the detailed documentation in the [docs\ ](https://github.com/TanviPooranmal/GitX/tree/main/docs) directory. It includes guides, references, and troubleshooting information to help you get started with GitX.
+You can find the detailed documentation [here](https://tanvipooranmal.github.io/GitX/) and, also in the [docs\ ](https://github.com/TanviPooranmal/GitX/tree/main/docs) directory. It includes guides, references, and troubleshooting information to help you get started with GitX.
 
 ## License
 
-GitX is licensed under the MIT License. See the [LICENSE](LICENSE.MD) file for more details.
+GitX is licensed under the GNU GENERAL PUBLIC LICENSE. See the [LICENSE](LICENSE.MD) file for more details.
