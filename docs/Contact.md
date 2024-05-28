@@ -1,7 +1,6 @@
 ---
+title: Contact
 ---
-# Contact Us
-
 As the sole developer and maintainer of GitX, I welcome your feedback, questions, and suggestions. Here’s how you can reach out:
 
 **Email**: Please feel free to send an email at `tanvimeena19@gmail.com`for any queries, issues, or suggestions. I strive to respond to all queries ASAP.

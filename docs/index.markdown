@@ -24,6 +24,9 @@ GitX is a simple Version Control System inspired by Git. It allows you to track 
     3. Distributed Version Control System
     4. Advanced Features (currently under development)
 4. [Tutorials](Tutorials.md)
+    1. Setting Up Your First GitX Repository
+    2. Collaborating with Others
+    3. Resolving Merge Conflicts
 5. [Command Reference](Command_Reference.md)
 6. [Troubleshooting](Troubleshooting.md)
     1. Common Issues and Solutions

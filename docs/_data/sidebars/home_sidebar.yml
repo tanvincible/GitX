@@ -1,5 +1,3 @@
-# This is your sidebar TOC. The sidebar code loops through sections here and provides the appropriate formatting.
-
 entries:
 - title: Sidebar
   levels: one
@@ -48,8 +46,17 @@ entries:
       output: web
   
   - title: Tutorials
-    url: /Tutorials.html
     output: web
+    folderitems:
+    - title: Setting Up Your First GitX Repository
+      url: /Tutorials.html#setting-up-your-first-gitx-repository
+      output: web
+    - title: Collaborating with Others
+      url: /Tutorials.html#collaborating-with-others
+      output: web
+    - title: Resolving Merge Conflicts
+      url: /Tutorials.html#resolving-merge-conflicts
+      output: web
 
   - title: Command Reference
     url: /news.html
@@ -78,5 +85,4 @@ entries:
     - title: References
       url: /mydoc_introduction.html
       output: web
-
-# Copyright 2024 Tanvi Pooranmal Meena
+      
