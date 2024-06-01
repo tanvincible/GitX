@@ -3,7 +3,7 @@ package models
 // File represents a file in the repository.
 type File struct {
 	Path string
-	Hash string
+	Content string
 }
 
 // Branch represents a branch in the repository.

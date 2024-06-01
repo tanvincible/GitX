@@ -85,17 +85,17 @@ func UpdateMetadata(metadataFile, filePath, hashValue string, newCommit models.C
 
 // GetTrackedFiles retrieves the tracked files from the metadata.
 func GetTrackedFiles(metadataFile string) (map[string]string, error) {
-	metadata, err := ReadMetadata(filepath.Dir(metadataFile))
-	if err != nil {
-		return nil, err
-	}
+    metadata, err := ReadMetadata(filepath.Dir(metadataFile))
+    if err != nil {
+        return nil, err
+    }
 
-	trackedFiles := make(map[string]string)
-	for _, commit := range metadata.Commits {
-		for _, file := range commit.Files {
-			trackedFiles[file.Path] = file.Hash
-		}
-	}
+    trackedFiles := make(map[string]string)
+    for _, commit := range metadata.Commits {
+        for path, content := range commit.Files {
+            trackedFiles[path] = content
+        }
+    }
 
-	return trackedFiles, nil
+    return trackedFiles, nil
 }

@@ -4,8 +4,6 @@ layout: home
 title: GitX - Official Documentation
 permalink: /
 ---
-# GitX - Official Documentation
-
 GitX is a simple Version Control System inspired by Git. It allows you to track changes to your project files and collaborate with others.
 
 ## Table of Contents:

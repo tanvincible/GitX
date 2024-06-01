@@ -6,12 +6,12 @@ import (
 
 type Commit struct {
 	ID        string
-	Parent    *Commit
+	Parent    []*Commit
 	Tree      *Tree
 	Message   string
 	Author    string
 	Timestamp time.Time
-	Files     []File
+	Files     map[string]string
 	// Additional fields
 	Committer    string
 	GPGSignature string
