@@ -16,7 +16,7 @@ func main() {
 	fmt.Println("Arguments:", args) // Print out the arguments for debugging
 
 	if len(args) < 2 || args[0] != "gitx" {
-		fmt.Println("Usage: gitx <command> [init, add, commit, status, branch, merge, squash, stash, push, pull, clone]")
+		fmt.Println("Usage: gitx <command> [init, add, commit, status, branch, merge, squash, stash, log, reflog push, pull, clone]")
 		os.Exit(1)
 	}
 
@@ -112,6 +112,9 @@ func main() {
 			fmt.Printf("Error executing cat-file: %v\n", err)
 			os.Exit(1)
 		}
+	case "reflog":
+		// Call ReflogHandler from the vcs_operations package
+		vcs_operations.ReflogHandler()
 	default:
 		fmt.Printf("gitx: %s is not a valid command\n", command)
 		os.Exit(1)

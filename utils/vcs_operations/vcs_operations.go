@@ -196,7 +196,7 @@ func readCommit(commitID string) (*models.Commit, error) {
 }
 
 // findCommonAncestor finds the common ancestor of two commits.
-func findCommonAncestor(commit1, commit2 *models.Commit) (*models.Commit, error) {
+func findCommonAncestor(currentCommit *models.Commit, mergeCommit *models.Commit) (*models.Commit, error) {
 	// Placeholder for common ancestor logic
 	// You can implement a proper logic to find common ancestors.
 	// For now, we assume the initial commit is the common ancestor.
@@ -484,9 +484,58 @@ func CatFile(objectID string) error {
 }
 
 // getObjectByID retrieves the object from the repository by its ID.
-func getObjectByID(objectID string) (*models.Commit, error) {
+func getObjectByID(_ string) (*models.Commit, error) {
 	// Placeholder for retrieving the object by ID
 	// You would typically fetch the object from the repository storage by its ID
 	// and return the object's content along with other metadata.
 	return nil, fmt.Errorf("getObjectByID: not implemented")
+}
+
+func ReflogHandler() error {
+	reflogDir := ".gitx/reflog"
+
+	// Check if the reflog directory exists
+	if _, err := os.Stat(reflogDir); os.IsNotExist(err) {
+		return fmt.Errorf("reflog directory does not exist: %v", err)
+	}
+
+	// Read the reflog directory
+	files, err := os.ReadDir(reflogDir)
+	if err != nil {
+		return fmt.Errorf("error reading reflog directory: %v", err)
+	}
+
+	// Iterate over the reflog files
+	for _, file := range files {
+		if !file.IsDir() {
+			reflogFile := filepath.Join(reflogDir, file.Name())
+			if err := displayReflog(reflogFile); err != nil {
+				log.Printf("Error displaying reflog file %s: %v", reflogFile, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+func displayReflog(reflogFile string) error {
+	file, err := os.Open(reflogFile)
+	if err != nil {
+		return fmt.Errorf("error opening reflog file %s: %v", reflogFile, err)
+	}
+	defer file.Close()
+
+	var reflog models.Reflog
+	if err := json.NewDecoder(file).Decode(&reflog); err != nil {
+		return fmt.Errorf("error decoding reflog file %s: %v", reflogFile, err)
+	}
+
+	// Print reflog details
+	fmt.Println("Reflog:", reflog.ID)
+	fmt.Println("Author:", reflog.Author)
+	fmt.Println("Date:", reflog.Timestamp)
+	fmt.Println("Message:", reflog.Message)
+	fmt.Println("-------------------------------")
+
+	return nil
 }

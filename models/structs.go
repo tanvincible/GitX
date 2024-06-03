@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // File represents a file in the repository.
 type File struct {
 	Path string
@@ -17,4 +19,13 @@ type Repository struct {
 	Directory string
 	Branches  []Branch
 	HEAD      *Branch
+}
+
+// Reflog represents a reference log entry in the repository.
+type Reflog struct {
+	ID        string
+	Author    string
+	Timestamp time.Time
+	Message   string
+	// Add other necessary fields here
 }
