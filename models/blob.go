@@ -33,3 +33,8 @@ func calculateHash(content []byte) string {
 	hasher.Write(content)
 	return fmt.Sprintf("%x", hasher.Sum(nil))
 }
+
+// GetID returns the ID of the blob.
+func (b *Blob) GetID() string {
+	return b.ID
+}
