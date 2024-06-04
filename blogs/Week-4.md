@@ -12,15 +12,15 @@ The `cat-file` command in GitX allows you to view the contents of a specific obj
 
 Cherry-picking is a powerful feature in GitX that allows you to apply the changes from a specific commit onto another branch. It's a handy way to selectively apply changes without merging entire branches.
 
-### ls reflog
+### reflog
 
-The `ls reflog` command displays the reference logs, which keep track of changes to the repository's references (e.g., branches, tags). It can be helpful for understanding the history of reference updates.
+The `reflog` command displays the reference logs, which keep track of changes to the repository's references (e.g., branches, tags). It can be helpful for understanding the history of reference updates.
 
 ### log
 
 The `log` command in GitX shows the commit history of the repository. It displays information such as commit messages, authors, dates, and commit hashes. It's a useful command for tracking changes and understanding the project's evolution.
 
-### ls file
+### ls-files
 
 The `ls file` command allows you to list the files in a specific commit or tree. It can be handy for inspecting the contents of a particular snapshot in the repository's history.
 
