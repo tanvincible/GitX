@@ -1,4 +1,4 @@
-# Week 2: Exploring Git Internals
+# Week 2: Exploring Git Internals and Merkle Tree
 
 In the second week of developing GitX, we delved into the internals of Git and gained a deeper understanding of its underlying structure and components. This knowledge will be crucial in building a lightweight version control system that aligns with Git's principles.
 
