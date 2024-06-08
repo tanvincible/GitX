@@ -46,37 +46,27 @@ func main() {
 		// Call StatusHandler from the file_operations package
 		file_operations.StatusHandler(stagingArea)
 	case "branch":
-		if len(args) < 3 {
-			fmt.Println("Usage: gitx branch <create/list/switch/delete>")
-			os.Exit(1)
-		}
-		// Handle branch-related logic using functions from vcs_operations
-		branchSubCommand := args[2]
-		switch branchSubCommand {
-		case "create":
-			if len(args) != 4 {
-				fmt.Println("Usage: gitx branch create <branch-name>")
-				os.Exit(1)
-			}
-			vcs_operations.CreateBranch(args[3])
-		case "list":
+		if len(args) == 2 {
+			// List all branches
 			vcs_operations.ListBranches()
-		case "switch":
-			if len(args) != 4 {
-				fmt.Println("Usage: gitx branch switch <branch-name>")
-				os.Exit(1)
-			}
-			vcs_operations.SwitchBranch(args[3])
-		case "delete":
-			if len(args) != 4 {
-				fmt.Println("Usage: gitx branch delete <branch-name>")
-				os.Exit(1)
-			}
+		} else if len(args) == 3 {
+			// Create a new branch
+			vcs_operations.CreateBranch(args[2])
+		} else if len(args) == 4 && args[2] == "-d" {
+			// Delete a branch
 			vcs_operations.DeleteBranch(args[3])
-		default:
-			fmt.Printf("gitx branch: %s is not a valid subcommand\n", branchSubCommand)
+		} else {
+			fmt.Println("Usage: gitx branch [-d <branch-name> | <branch-name>]")
 			os.Exit(1)
 		}
+	
+	case "checkout":
+		if len(args) != 3 {
+			fmt.Println("Usage: gitx checkout <branch-name>")
+			os.Exit(1)
+		}
+		// Switch to the specified branch
+		vcs_operations.SwitchBranch(args[2])
 	case "merge":
 		if len(args) != 3 {
 			fmt.Println("Usage: gitx merge <branch-name>")
