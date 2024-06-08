@@ -5,7 +5,7 @@ import (
 	"GitX/models"
 	"encoding/json"
 	"fmt"
-	"io"
+	// "io"
 	"log"
 	"os"
 	"path/filepath"
@@ -29,42 +29,56 @@ func UpdateHEAD(commitHash string) {
 	}
 }
 
+// Function to check if a branch exists by looking for its reference file
+func branchExists(branchName string) bool {
+	refsHeadsDir := filepath.Join(".gitx", "refs", "heads")
+	branchRefPath := filepath.Join(refsHeadsDir, branchName)
+	if _, err := os.Stat(branchRefPath); err == nil {
+		return true
+	}
+	return false
+}
+
+func getCurrentBranch() (string, error) {
+	headFile := filepath.Join(".gitx", "HEAD")
+	content, err := os.ReadFile(headFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to read HEAD file: %v", err)
+	}
+
+	// Parse the content to extract the branch name
+	refPrefix := "ref: refs/heads/"
+	if strings.HasPrefix(string(content), refPrefix) {
+		// The branch name is the part after the prefix
+		return strings.TrimSpace(strings.TrimPrefix(string(content), refPrefix)), nil
+	}
+
+	return "", fmt.Errorf("HEAD file does not contain a valid branch reference")
+}
+
 // CreateBranch creates a new Git branch.
 func CreateBranch(branchName string) error {
-	// Define the branch directory path
-	branchDir := filepath.Join(".gitx", "refs", "heads", branchName)
+	if branchExists(branchName) {
+		return fmt.Errorf("branch '%s' already exists", branchName)
+	}
+	gitxDir := ".gitx"
+	refsHeadsDir := filepath.Join(gitxDir, "refs", "heads")
+	branchRefPath := filepath.Join(refsHeadsDir, branchName)
 
 	// Check if the branch already exists
-	if _, err := os.Stat(branchDir); err == nil {
-		return fmt.Errorf("branch %s already exists", branchName)
+	if _, err := os.Stat(branchRefPath); err == nil {
+		return fmt.Errorf("branch '%s' already exists", branchName)
 	}
 
-	// Get the current branch name
-	currentBranch, err := getCurrentBranch()
-	if err != nil {
-		return err
+	// Initialize the new branch ref file with an empty content or placeholder
+	initialContent := []byte("") // Empty content since there are no commits yet
+
+	// Write the initial content to the new branch ref file
+	if err := os.WriteFile(branchRefPath, initialContent, 0644); err != nil {
+		return fmt.Errorf("error initializing branch ref file: %v", err)
 	}
 
-	// Define the path to the current branch directory
-	currentBranchDir := filepath.Join(".gitx", "refs", "heads", currentBranch)
-
-	// Check if the current branch directory exists
-	if _, err := os.Stat(currentBranchDir); os.IsNotExist(err) {
-		return fmt.Errorf("current branch directory does not exist")
-	}
-
-	// Create the new branch directory
-	if err := os.MkdirAll(branchDir, os.ModePerm); err != nil {
-		return fmt.Errorf("failed to create branch directory: %v", err)
-	}
-
-	// Copy the contents from the current branch directory to the new branch directory
-	if err := copyDir(currentBranchDir, branchDir); err != nil {
-		return fmt.Errorf("failed to create branch: %v", err)
-	}
-
-	// Indicate successful branch creation
-	fmt.Printf("Created branch: %s\n", branchName)
+	fmt.Printf("Branch '%s' created successfully.\n", branchName)
 	return nil
 }
 
@@ -72,62 +86,102 @@ func ListBranches() {
 	gitxDir := ".gitx"
 	refsHeadsDir := filepath.Join(gitxDir, "refs", "heads")
 
+	// Read the current branch reference from the HEAD file
+	headFile := filepath.Join(gitxDir, "HEAD")
+	currentBranchRefBytes, err := os.ReadFile(headFile)
+	if err != nil {
+		log.Fatalf("Error reading HEAD file: %v", err)
+	}
+	currentBranchRef := strings.TrimSpace(string(currentBranchRefBytes))
+
+	// Extract the branch name from the reference
+	// Assuming the reference is in the format "refs/heads/branch-name"
+	parts := strings.Split(currentBranchRef, "/")
+	if len(parts) < 3 {
+		log.Fatalf("Invalid branch reference in HEAD file")
+	}
+	currentBranch := parts[2] // The branch name is the third part of the reference
+
 	files, err := os.ReadDir(refsHeadsDir)
 	if err != nil {
 		log.Fatalf("Error reading refs/heads directory: %v", err)
 	}
 
-	fmt.Println("Branches:")
 	for _, file := range files {
 		if file.IsDir() {
 			continue
 		}
-		fmt.Println(file.Name())
+		branchName := file.Name()
+		if branchName == currentBranch {
+			// Print the current branch in green with an asterisk
+			fmt.Printf("\033[32m* %s\033[0m\n", branchName)
+		} else {
+			fmt.Println(branchName)
+		}
 	}
 }
 
 // SwitchBranch switches to the specified Git branch.
 func SwitchBranch(branchName string) error {
-	branchDir := filepath.Join(".gitx", "branches", branchName)
-	if _, err := os.Stat(branchDir); os.IsNotExist(err) {
+	if !branchExists(branchName) {
 		return fmt.Errorf("branch %s does not exist", branchName)
 	}
 
+	// Get the name of the current branch
 	currentBranch, err := getCurrentBranch()
 	if err != nil {
 		return err
 	}
 
-	currentBranchDir := filepath.Join(".gitx", "branches", currentBranch)
-	if _, err := os.Stat(currentBranchDir); os.IsNotExist(err) {
-		return fmt.Errorf("current branch directory does not exist")
+	// Check if the target branch is the same as the current branch
+	if currentBranch == branchName {
+		fmt.Printf("Already on '%s'\n", branchName)
+		return nil
 	}
 
-	if err := copyDir(branchDir, currentBranchDir); err != nil {
+	// Path to the HEAD file
+	headPath := filepath.Join(".gitx", "HEAD")
+
+	// Content to write to the HEAD file, pointing to the new branch
+	newHeadContent := []byte("ref: refs/heads/" + branchName + "\n")
+
+	// Write the new HEAD content to point to the new branch
+	if err := os.WriteFile(headPath, newHeadContent, 0644); err != nil {
 		return fmt.Errorf("failed to switch branch: %v", err)
 	}
-
-	fmt.Printf("Switched to branch: %s\n", branchName)
+	fmt.Println("Switched to branch:", branchName)
 	return nil
 }
 
 // DeleteBranch deletes the specified Git branch.
 func DeleteBranch(branchName string) error {
-	if branchName == "main" {
-		return fmt.Errorf("cannot delete main branch")
-	}
+    if branchName == "" {
+        return fmt.Errorf("branch name cannot be empty")
+    }
+    if !branchExists(branchName) {
+        return fmt.Errorf("branch '%s' does not exist", branchName)
+    }
 
-	branchDir := filepath.Join(".gitx", "branches", branchName)
-	if _, err := os.Stat(branchDir); os.IsNotExist(err) {
-		return fmt.Errorf("branch %s does not exist", branchName)
-	}
+    // Prevent deletion of the current branch
+    currentBranch, err := getCurrentBranch()
+    if err != nil {
+        return err
+    }
+    if currentBranch == branchName {
+        return fmt.Errorf("cannot delete the current branch")
+    }
 
-	if err := os.RemoveAll(branchDir); err != nil {
-		return fmt.Errorf("failed to delete branch: %v", err)
-	}
+    // Path to the branch reference file
+    refsHeadsDir := filepath.Join(".gitx", "refs", "heads")
+    branchRefPath := filepath.Join(refsHeadsDir, branchName)
 
-	fmt.Printf("Deleted branch: %s\n", branchName)
-	return nil
+    // Delete the branch reference file
+    if err := os.Remove(branchRefPath); err != nil {
+        return fmt.Errorf("failed to delete branch: %v", err)
+    }
+
+    fmt.Printf("Branch '%s' deleted successfully.\n", branchName)
+    return nil
 }
 
 // MergeBranch merges the specified branch into the current branch.
@@ -158,15 +212,6 @@ func MergeBranch(branchName string) error {
 
 	fmt.Printf("Merged branch %s into %s\n", branchName, currentBranch)
 	return nil
-}
-
-func getCurrentBranch() (string, error) {
-	headFile := filepath.Join(".gitx", "HEAD")
-	content, err := os.ReadFile(headFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to read HEAD file: %v", err)
-	}
-	return string(content), nil
 }
 
 // getCommitID returns the commit ID of the given branch
@@ -434,6 +479,7 @@ func copyDir(src, dst string) error {
 	return nil
 }
 
+/*
 // copyFile copies a single file from the source to the destination.
 func copyFile(src, dst string) error {
 	sourceFile, err := os.Open(src)
@@ -458,6 +504,8 @@ func copyFile(src, dst string) error {
 
 	return nil
 }
+
+*/
 
 // CatFile displays the content of an object in the repository.
 func CatFile(objectID string) error {
