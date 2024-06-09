@@ -32,7 +32,7 @@ func main() {
 		fmt.Println("Usage: gitx <command> [options]")
 		os.Exit(1)
 	}
-	
+
 	// Execute the appropriate command
 	switch os.Args[1] {
 	case "init":
@@ -59,7 +59,7 @@ func main() {
 		for _, filePath := range os.Args[2:] {
 			file_operations.AddHandler("", filePath, stagingArea)
 		}
-	
+
 	case "commit":
 		commitCommand.Parse(os.Args[2:])
 		// Commit all staged changes with the provided message

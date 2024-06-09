@@ -13,6 +13,7 @@ import (
 	"time"
 )
 
+// UpdateHEAD updates the HEAD file with the commit hash
 func UpdateHEAD(commitHash string) {
 	headFile := "HEAD"
 
@@ -39,6 +40,7 @@ func branchExists(branchName string) bool {
 	return false
 }
 
+// getCurrentBranch reads the current branch from the HEAD file.
 func getCurrentBranch() (string, error) {
 	headFile := filepath.Join(".gitx", "HEAD")
 	content, err := os.ReadFile(headFile)
@@ -82,6 +84,7 @@ func CreateBranch(branchName string) error {
 	return nil
 }
 
+// ListBranches lists all the Git branches in the repository.
 func ListBranches() {
 	gitxDir := ".gitx"
 	refsHeadsDir := filepath.Join(gitxDir, "refs", "heads")
@@ -155,33 +158,33 @@ func SwitchBranch(branchName string) error {
 
 // DeleteBranch deletes the specified Git branch.
 func DeleteBranch(branchName string) error {
-    if branchName == "" {
-        return fmt.Errorf("branch name cannot be empty")
-    }
-    if !branchExists(branchName) {
-        return fmt.Errorf("branch '%s' does not exist", branchName)
-    }
+	if branchName == "" {
+		return fmt.Errorf("branch name cannot be empty")
+	}
+	if !branchExists(branchName) {
+		return fmt.Errorf("branch '%s' does not exist", branchName)
+	}
 
-    // Prevent deletion of the current branch
-    currentBranch, err := getCurrentBranch()
-    if err != nil {
-        return err
-    }
-    if currentBranch == branchName {
-        return fmt.Errorf("cannot delete the current branch")
-    }
+	// Prevent deletion of the current branch
+	currentBranch, err := getCurrentBranch()
+	if err != nil {
+		return err
+	}
+	if currentBranch == branchName {
+		return fmt.Errorf("cannot delete the current branch")
+	}
 
-    // Path to the branch reference file
-    refsHeadsDir := filepath.Join(".gitx", "refs", "heads")
-    branchRefPath := filepath.Join(refsHeadsDir, branchName)
+	// Path to the branch reference file
+	refsHeadsDir := filepath.Join(".gitx", "refs", "heads")
+	branchRefPath := filepath.Join(refsHeadsDir, branchName)
 
-    // Delete the branch reference file
-    if err := os.Remove(branchRefPath); err != nil {
-        return fmt.Errorf("failed to delete branch: %v", err)
-    }
+	// Delete the branch reference file
+	if err := os.Remove(branchRefPath); err != nil {
+		return fmt.Errorf("failed to delete branch: %v", err)
+	}
 
-    fmt.Printf("Branch '%s' deleted successfully.\n", branchName)
-    return nil
+	fmt.Printf("Branch '%s' deleted successfully.\n", branchName)
+	return nil
 }
 
 // MergeBranch merges the specified branch into the current branch.
@@ -442,6 +445,7 @@ func displayCommit(commitFile string) {
 	fmt.Println("-------------------------------")
 }
 
+// copyDir copies the contents of a directory to another directory.
 func copyDir(src, dst string) error {
 	err := filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -539,6 +543,7 @@ func getObjectByID(_ string) (*models.Commit, error) {
 	return nil, fmt.Errorf("getObjectByID: not implemented")
 }
 
+// ReflogHandler displays the reflog history.
 func ReflogHandler() error {
 	reflogDir := ".gitx/reflog"
 
@@ -566,6 +571,7 @@ func ReflogHandler() error {
 	return nil
 }
 
+// displayReflog reads and prints reflog details
 func displayReflog(reflogFile string) error {
 	file, err := os.Open(reflogFile)
 	if err != nil {

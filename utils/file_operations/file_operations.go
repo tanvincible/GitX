@@ -7,6 +7,7 @@ import (
 	"GitX/models"
 	"GitX/utils/metadata_operations"
 	"GitX/utils/vcs_operations"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"time"
 )
 
+// InitHandler initializes a new GitX repository by creating the necessary directories and files.
 func InitHandler(directory string) {
 	// Create repository directory
 	if err := os.MkdirAll(directory, os.ModePerm); err != nil {
@@ -101,7 +103,11 @@ func AddHandler(repoRoot, filePath string, stagingArea map[string]string) error 
 	return nil
 }
 
+// CommitHandler creates a commit object, compresses the file content, stores the compressed file, updates metadata, and updates the HEAD reference.
 func CommitHandler(message string, stagingArea map[string]string) {
+	// Create the commits directory if it doesn't exist
+	commitsDir := ".gitx/commits"
+
 	// Step 1: For each file in the staging area
 	for filePath, hashValue := range stagingArea {
 		// Step 2: Create Storage Path
@@ -132,6 +138,19 @@ func CommitHandler(message string, stagingArea map[string]string) {
 			Timestamp: time.Now(), // Set commit timestamp
 			// Additional fields if needed
 		}
+
+		// Serialize the commit object to JSON
+		commitData, err := json.Marshal(newCommit)
+		if err != nil {
+			log.Fatalf("Error serializing commit data: %v", err)
+		}
+
+		// Step 6: Write Commit Object to File
+		commitFilePath := filepath.Join(commitsDir, newCommit.ID)
+		if err := os.WriteFile(commitFilePath, commitData, 0644); err != nil {
+			log.Fatalf("Error writing commit file: %v", err)
+		}
+
 		// Step 7: Update Metadata
 		metadataFile := "metadata.json"
 		if err := metadata_operations.UpdateMetadata(metadataFile, filePath, hashValue, newCommit); err != nil {
@@ -149,6 +168,7 @@ func CommitHandler(message string, stagingArea map[string]string) {
 	fmt.Printf("Commit created with message: %s\n", message)
 }
 
+// StatusHandler compares the files in the staging area with the tracked files in the metadata and the files in the working directory.
 func StatusHandler(stagingArea map[string]string) {
 	// Step 1: Retrieve tracked files from metadata
 	trackedFiles, err := metadata_operations.GetTrackedFiles("metadata.json")
@@ -192,6 +212,7 @@ func StatusHandler(stagingArea map[string]string) {
 	}
 }
 
+// getAllFilesInDir returns a list of all files in a directory.
 func getAllFilesInDir(dirPath string) ([]string, error) {
 	var files []string
 	err := filepath.Walk(dirPath, func(path string, info os.FileInfo, err error) error {
