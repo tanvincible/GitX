@@ -1,6 +1,6 @@
 # GitX
 
-GitX is a version control system that provides a simple and efficient way to manage your source code. It includes a variety of features such as support for merkle trees, compression, and metadata operations.
+GitX is a powerful version control system inspired by Git, designed to provide a simple and efficient way to manage your source code. With GitX, you can enjoy nearly all of Git's features, including support for merkle trees, compression, and metadata operations. Whether you are a solo developer or part of a team, GitX empowers you to track changes, collaborate seamlessly, and ensure the integrity of your codebase. Experience the ease and flexibility of GitX for all your version control needs.
 
 > [!IMPORTANT]
 > GitX is actively under development, and hence, it is highly unstable.
@@ -36,18 +36,16 @@ To clone the repository and build the project, follow these steps:
     ```
 3. Build the project:
     ```
-    go build -o gitx cmd/main.go
+    go build -o gitx.exe cmd/main.go
     ```
 4. Run the executable:
     ```
-    ./gitx
+    ./gitx <command>
     ```
 
 ### Using `go get`
 
-Use `go get` if you want to:
-
-- Use GitX as a library in another Go project.
+Use `go get` if you want to use GitX as a library in another Go project.
 
 1. To fetch and install GitX as a dependency, run:
 
@@ -118,7 +116,7 @@ For the detailed project structure, click [here](Project_Structure.md).
 
 ## Documentation
 
-You can find the detailed documentation [here](https://tanvipooranmal.github.io/GitX/) and, also in the [docs\ ](https://github.com/TanviPooranmal/GitX/tree/main/docs) directory. It includes guides, references, and troubleshooting information to help you get started with GitX.
+You can find the detailed documentation [here](https://tanvipooranmal.github.io/GitX/) and, also in the [docs\ ](https://github.com/TanviPooranmal/GitX/tree/main/docs) directory. It includes guides, references, and troubleshooting information to help you get started with `GitX`.
 
 ## License
 
