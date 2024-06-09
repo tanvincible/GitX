@@ -16,9 +16,6 @@ func main() {
 	// Define flags
 	initCommand := flag.NewFlagSet("init", flag.ExitOnError)
 
-	addCommand := flag.NewFlagSet("add", flag.ExitOnError)
-	addFilePath := addCommand.String("files", "", "Space-separated list of file paths to add")
-
 	commitCommand := flag.NewFlagSet("commit", flag.ExitOnError)
 	commitMessage := commitCommand.String("message", "", "Commit message")
 
@@ -35,7 +32,7 @@ func main() {
 		fmt.Println("Usage: gitx <command> [options]")
 		os.Exit(1)
 	}
-
+	
 	// Execute the appropriate command
 	switch os.Args[1] {
 	case "init":
@@ -54,9 +51,15 @@ func main() {
 		file_operations.InitHandler(repoPath)
 
 	case "add":
-		addCommand.Parse(os.Args[2:])
-		file_operations.AddHandler(*addFilePath, stagingArea)
-
+		if len(os.Args) < 3 {
+			fmt.Println("Error: No file path provided for the 'add' command")
+			os.Exit(1)
+		}
+		// Loop through all the provided file paths
+		for _, filePath := range os.Args[2:] {
+			file_operations.AddHandler("", filePath, stagingArea)
+		}
+	
 	case "commit":
 		commitCommand.Parse(os.Args[2:])
 		// Commit all staged changes with the provided message
@@ -96,17 +99,17 @@ func main() {
 		}
 
 	case "checkout":
-        checkoutCommand.Parse(os.Args[2:])
-        if len(checkoutCommand.Args()) != 1 {
-            fmt.Println("Usage: gitx checkout <branch-name>")
-            os.Exit(1)
-        }
-        branchName := checkoutCommand.Arg(0)
-        err := vcs_operations.SwitchBranch(branchName)
-        if err != nil {
-            fmt.Println("Error switching to branch:", err)
-            os.Exit(1)
-        }
+		checkoutCommand.Parse(os.Args[2:])
+		if len(checkoutCommand.Args()) != 1 {
+			fmt.Println("Usage: gitx checkout <branch-name>")
+			os.Exit(1)
+		}
+		branchName := checkoutCommand.Arg(0)
+		err := vcs_operations.SwitchBranch(branchName)
+		if err != nil {
+			fmt.Println("Error switching to branch:", err)
+			os.Exit(1)
+		}
 
 	case "log":
 		vcs_operations.LogHandler()

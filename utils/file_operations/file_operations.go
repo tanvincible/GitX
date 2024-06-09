@@ -65,17 +65,40 @@ func InitHandler(directory string) {
 	fmt.Printf("Initialized empty repository in %s\n", directory)
 }
 
-func AddHandler(filePath string, stagingArea map[string]string) {
-	// Step 1: Calculate SHA-1 Hash
-	hashValue, err := hash.SHA1Hash(filePath)
+// AddHandler adds a file to the staging area, handling paths in a cross-platform manner.
+func AddHandler(repoRoot, filePath string, stagingArea map[string]string) error {
+	// Ensure the repoRoot is an absolute path
+	absRepoRoot, err := filepath.Abs(repoRoot)
 	if err != nil {
-		log.Fatalf("Error calculating hash for file %s: %v", filePath, err)
+		return fmt.Errorf("unable to resolve repository root: %w", err)
 	}
 
-	// Step 2: Add file to staging area
-	stagingArea[filePath] = hashValue
+	// Check if filePath is empty
+	if filePath == "" {
+		return fmt.Errorf("file path is empty")
+	}
 
-	fmt.Printf("File %s added to staging area\n", filePath)
+	// Join the repoRoot with the filePath to get the absolute path to the file
+	absFilePath := filepath.Join(absRepoRoot, filePath)
+
+	// Check if the file exists
+	if _, err := os.Stat(absFilePath); os.IsNotExist(err) {
+		return fmt.Errorf("file does not exist: %s", absFilePath)
+	}
+
+	// Calculate the SHA-1 hash of the file
+	hashValue, err := hash.SHA1Hash(absFilePath)
+	if err != nil {
+		return fmt.Errorf("error calculating hash for file %s: %w", absFilePath, err)
+	}
+
+	// Normalize the file path to use forward slashes
+	normalizedPath := filepath.ToSlash(filePath)
+
+	// Add the file and its hash to the staging area
+	stagingArea[normalizedPath] = hashValue
+
+	return nil
 }
 
 func CommitHandler(message string, stagingArea map[string]string) {
