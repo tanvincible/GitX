@@ -3,31 +3,136 @@ package vcs_operations
 import (
 	"GitX/internal/hash"
 	"GitX/models"
+	"crypto/sha1"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	// "io"
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
 
-// UpdateHEAD updates the HEAD file with the commit hash
-func UpdateHEAD(commitHash string) {
-	headFile := "HEAD"
-
-	// Create or open the HEAD file
-	file, err := os.OpenFile(headFile, os.O_RDWR|os.O_CREATE, 0644)
-	if err != nil {
-		log.Fatalf("Error opening HEAD file: %v", err)
-	}
-	defer file.Close()
+// UpdateHEAD updates the HEAD file with the reference to the latest commit on the current branch.
+func UpdateHEAD(commitHash string) error {
+	headFile := ".gitx/HEAD"
 
 	// Write the commit hash to the HEAD file
-	if _, err := file.WriteString(commitHash); err != nil {
-		log.Fatalf("Error writing to HEAD file: %v", err)
+	if err := os.WriteFile(headFile, []byte(commitHash), 0644); err != nil {
+		return fmt.Errorf("error writing to HEAD file: %w", err)
 	}
+
+	return nil
+}
+
+// GetCurrentHeadCommit retrieves the current commit that HEAD is pointing to.
+func GetCurrentHeadCommit() string {
+	headFile := ".gitx/HEAD"
+	content, err := os.ReadFile(headFile)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// If the HEAD file doesn't exist, it means there are no commits yet.
+			return ""
+		}
+		log.Fatalf("Error reading HEAD file: %v", err)
+	}
+
+	headContent := string(content)
+	// Check if HEAD is a reference to a branch
+	if strings.HasPrefix(headContent, "refs/heads/") {
+		// Extract the branch name
+		branchName := strings.TrimPrefix(headContent, "refs/heads/")
+		// Check if the branch has any commits
+		branchCommitsFile := fmt.Sprintf(".gitx/refs/heads/%s", branchName)
+		if _, err := os.Stat(branchCommitsFile); os.IsNotExist(err) {
+			// If the branch commits file doesn't exist, there are no commits on this branch
+			return ""
+		} else {
+			// Read the last commit hash from the branch commits file
+			lastCommitHash, err := os.ReadFile(branchCommitsFile)
+			if err != nil {
+				log.Fatalf("Error reading branch commits file: %v", err)
+			}
+			return string(lastCommitHash)
+		}
+	}
+
+	// If HEAD is not a branch reference, assume it's a commit hash
+	return headContent
+}
+
+// CreateTreeFromStagingArea takes a map of file paths to their hashes and creates a Tree object.
+func CreateTreeFromStagingArea(stagingArea map[string]string) (*models.Tree, error) {
+	tree := &models.Tree{
+		Entries: []models.TreeEntry{},
+	}
+
+	// Sort the file paths to ensure consistent tree hash
+	var paths []string
+	for path := range stagingArea {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+
+	// Create TreeEntries for each file in the staging area
+	for _, path := range paths {
+		hashValue := stagingArea[path]
+		entry := models.TreeEntry{
+			Name: path,
+			Mode: "100644", // This mode represents a regular non-executable file
+			ID:   hashValue,
+			Type: "blob", // Assuming all entries are files for simplicity
+		}
+		tree.Entries = append(tree.Entries, entry)
+	}
+
+	// Generate the SHA-1 hash for the tree
+	hash := sha1.New()
+	for _, entry := range tree.Entries {
+		// Create a string representation of the entry for hashing
+		entryStr := fmt.Sprintf("%s %s %s\t%s", entry.Mode, entry.Type, entry.ID, entry.Name)
+		hash.Write([]byte(entryStr))
+	}
+	tree.ID = hex.EncodeToString(hash.Sum(nil))
+
+	return tree, nil
+}
+
+// GetCommitByHash retrieves a commit object by its hash.
+func GetCommitByHash(commitHash string) (*models.Commit, error) {
+	commitsDir := ".gitx/commits"
+	commitFilePath := filepath.Join(commitsDir, commitHash)
+
+	// Read the commit file using os.ReadFile
+	commitData, err := os.ReadFile(commitFilePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("commit %s does not exist", commitHash)
+		}
+		return nil, fmt.Errorf("error reading commit file: %w", err)
+	}
+
+	// Unmarshal the commit data into a Commit object
+	var commit models.Commit
+	if err := json.Unmarshal(commitData, &commit); err != nil {
+		return nil, fmt.Errorf("error unmarshaling commit data: %w", err)
+	}
+
+	return &commit, nil
+}
+
+// GetCurrentUser retrieves the current user from the system.
+func GetCurrentUser() string {
+	// Placeholder for getting the current user
+	return "John Doe"
+}
+
+func CreateEmptyTree() *models.Tree {
+    return &models.Tree{
+        Entries: []models.TreeEntry{},
+    }
 }
 
 // Function to check if a branch exists by looking for its reference file
@@ -56,6 +161,40 @@ func getCurrentBranch() (string, error) {
 	}
 
 	return "", fmt.Errorf("HEAD file does not contain a valid branch reference")
+}
+
+// GenerateCommitID generates a commit ID based on the tree hash, parent commit IDs, and other commit information.
+func GenerateCommitID(tree *models.Tree, parents []*models.Commit, message, author string, timestamp time.Time) (string, error) {
+	// Create a new SHA-1 hash instance
+	h := sha1.New()
+
+	// Serialize the tree hash
+	treeHash := tree.ID // Use the ID field of the tree object
+	h.Write([]byte(fmt.Sprintf("tree %s\n", treeHash)))
+
+	// Serialize parent commits
+	for _, parent := range parents {
+		h.Write([]byte(fmt.Sprintf("parent %s\n", parent.ID)))
+	}
+
+	// Serialize author information
+	authorInfo := fmt.Sprintf("author %s %d +0000\n", author, timestamp.Unix())
+	h.Write([]byte(authorInfo))
+
+	// Serialize committer information (same as author for simplicity)
+	committerInfo := fmt.Sprintf("committer %s %d +0000\n", author, timestamp.Unix())
+	h.Write([]byte(committerInfo))
+
+	// Serialize commit message
+	h.Write([]byte(fmt.Sprintf("\n%s\n", message)))
+
+	// Calculate the hash
+	hashed := h.Sum(nil)
+
+	// Encode the hashed result to hexadecimal string
+	hashedString := hex.EncodeToString(hashed)
+
+	return hashedString, nil
 }
 
 // CreateBranch creates a new Git branch.
@@ -482,34 +621,6 @@ func copyDir(src, dst string) error {
 
 	return nil
 }
-
-/*
-// copyFile copies a single file from the source to the destination.
-func copyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("failed to open source file: %v", err)
-	}
-	defer sourceFile.Close()
-
-	destinationFile, err := os.Create(dst)
-	if err != nil {
-		return fmt.Errorf("failed to create destination file: %v", err)
-	}
-	defer destinationFile.Close()
-
-	if _, err := io.Copy(destinationFile, sourceFile); err != nil {
-		return fmt.Errorf("failed to copy file: %v", err)
-	}
-
-	if err := destinationFile.Sync(); err != nil {
-		return fmt.Errorf("failed to sync file: %v", err)
-	}
-
-	return nil
-}
-
-*/
 
 // CatFile displays the content of an object in the repository.
 func CatFile(objectID string) error {

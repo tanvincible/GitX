@@ -63,7 +63,7 @@ func main() {
 	case "commit":
 		commitCommand.Parse(os.Args[2:])
 		// Commit all staged changes with the provided message
-		file_operations.CommitHandler(*commitMessage, stagingArea)
+		file_operations.CommitHandler(*commitMessage, &stagingArea)
 
 	case "branch":
 		// Parse the command line arguments starting from the second argument

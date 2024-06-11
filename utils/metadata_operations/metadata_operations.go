@@ -40,41 +40,57 @@ func WriteMetadata(metadata metadata.Metadata, directory string) error {
 
 // ReadMetadata reads the metadata from a file.
 func ReadMetadata(directory string) (metadata.Metadata, error) {
-	var metadata metadata.Metadata
+	var meta metadata.Metadata // Renamed variable to avoid conflict
 
 	// Read the JSON data from the metadata file
 	filePath := filepath.Join(directory, "metadata.json")
-	file, err := os.Open(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
-		return metadata, err
+		if os.IsNotExist(err) {
+			// If the metadata file doesn't exist, return a new Metadata instance
+			return metadata.Metadata{
+				RepositoryName: "",
+				Description:    "",
+				Branches:       []string{},
+				Commits:        []models.Commit{},
+			}, nil
+		}
+		return meta, err // Updated variable name
 	}
-	defer file.Close()
 
-	// Decode the JSON data into metadata structure
-	decoder := json.NewDecoder(file)
-	if err := decoder.Decode(&metadata); err != nil {
-		return metadata, err
+	// Check if the file is empty
+	if len(data) == 0 {
+		return metadata.Metadata{
+			RepositoryName: "",
+			Description:    "",
+			Branches:       []string{},
+			Commits:        []models.Commit{},
+		}, nil
 	}
 
-	return metadata, nil
+	// Decode the JSON data into the Metadata structure
+	err = json.Unmarshal(data, &meta) // Updated variable name
+	if err != nil {
+		return meta, err // Updated variable name
+	}
+
+	return meta, nil // Updated variable name
 }
-
 // UpdateMetadata updates the metadata file with new data.
-func UpdateMetadata(metadataFile, filePath, hashValue string, newCommit models.Commit) error {
+func UpdateMetadata(metadataFile string, newCommit models.Commit, filePath string, hashValue string) error {
 	// Read existing metadata
 	metadata, err := ReadMetadata(filepath.Dir(metadataFile))
 	if err != nil {
 		return err
 	}
 
-	// Update metadata with new commit information
-	commit := models.Commit{
-		ID:      hashValue,
-		Author:  newCommit.Author,
-		Message: newCommit.Message,
-		// Additional fields as needed
+	// If filePath and hashValue are provided, update the commit with them
+	if filePath != "" && hashValue != "" {
+		newCommit.Files = map[string]string{filePath: hashValue}
 	}
-	metadata.Commits = append(metadata.Commits, commit)
+
+	// Update metadata with new commit information
+	metadata.Commits = append(metadata.Commits, newCommit)
 
 	// Write updated metadata back to file
 	if err := WriteMetadata(metadata, filepath.Dir(metadataFile)); err != nil {
