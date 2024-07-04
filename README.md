@@ -112,7 +112,6 @@ GitX
     └───vcs_operations/      # Version control operations utility
             vcs_operations.go
 ```
-For the detailed project structure, click [here](Project_Structure.md).
 
 ## Documentation
 
