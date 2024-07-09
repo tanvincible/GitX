@@ -14,7 +14,8 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// InitHandler initializes a new GitX repository by creating the necessary directories and files.
+// InitHandler initializes a new GitX repository by creating the necessary directories and files,
+// including the INDEX file.
 func InitHandler(directory string) {
 	// Create repository directory
 	if err := os.MkdirAll(directory, os.ModePerm); err != nil {
@@ -85,6 +86,12 @@ func InitHandler(directory string) {
 	descriptionContent := []byte("Unnamed repository; edit this file to name the repository.\n")
 	if err := os.WriteFile(descriptionFile, descriptionContent, 0644); err != nil {
 		log.Fatalf("Error creating description file: %v", err)
+	}
+
+	// Create INDEX file
+	indexFile := filepath.Join(gitxDir, "INDEX")
+	if _, err := os.Create(indexFile); err != nil {
+		log.Fatalf("Error creating INDEX file: %v", err)
 	}
 
 	fmt.Printf("Initialized empty repository in %s\n", directory)
@@ -179,45 +186,56 @@ func ConfigHandlerWithFilePath(configFilePath, key, value string) {
 	fmt.Printf("Config updated successfully!\n")
 }
 
-// AddHandler adds a file to the staging area, handling paths in a cross-platform manner.
-func AddHandler(repoRoot, filePath string, stagingArea map[string]string) error {
-	// Ensure the repoRoot is an absolute path
-	absRepoRoot, err := filepath.Abs(repoRoot)
-	if err != nil {
-		return fmt.Errorf("unable to resolve repository root: %w", err)
-	}
+// AddHandler adds a file to the index for staging, following Git conventions.
+func AddHandler(indexFilePath, absFilePath string) error {
+    // Calculate the SHA-1 hash of the file
+    hashValue, err := hash.SHA1Hash(absFilePath)
+    if err != nil {
+        return fmt.Errorf("error calculating hash for file %s: %w", absFilePath, err)
+    }
 
-	// Check if filePath is empty
-	if filePath == "" {
-		return fmt.Errorf("file path is empty")
-	}
+    // Normalize the file path to use forward slashes
+    normalizedPath := filepath.ToSlash(absFilePath)
 
-	// Join the repoRoot with the filePath to get the absolute path to the file
-	absFilePath := filepath.Join(absRepoRoot, filePath)
+    // Open the INDEX file for appending or create it if not exists
+    indexFile, err := os.OpenFile(indexFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+    if err != nil {
+        return fmt.Errorf("error opening INDEX file: %w", err)
+    }
+    defer indexFile.Close()
 
-	// Check if the file exists
-	if _, err := os.Stat(absFilePath); os.IsNotExist(err) {
-		return fmt.Errorf("file does not exist: %s", absFilePath)
-	}
+    // Format the entry to write into the INDEX file
+    entry := fmt.Sprintf("100644 %s %d\t%s\n", hashValue, 0, normalizedPath)
 
-	// Calculate the SHA-1 hash of the file and store the blob in the object database
-	hashValue, err := hash.SHA1Hash(absFilePath)
-	if err != nil {
-		return fmt.Errorf("error calculating hash for file %s: %w", absFilePath, err)
-	}
+    // Write the entry into the INDEX file
+    if _, err := indexFile.WriteString(entry); err != nil {
+        return fmt.Errorf("error writing to INDEX file: %w", err)
+    }
 
-	// Normalize the file path to use forward slashes
-	normalizedPath := filepath.ToSlash(filePath)
-
-	// Add the file and its hash to the staging area
-	stagingArea[normalizedPath] = hashValue
-
-	return nil
+    return nil
 }
 
-// CommitHandler creates a commit object, compresses the file content, stores the compressed file, updates metadata, and updates the HEAD reference.
-func CommitHandler(message string, stagingArea *map[string]string) {
+// UpdateIndex updates the index file with the provided file path.
+func UpdateIndex(indexFile, filePath string) error {
+    // Open the index file for appending
+    f, err := os.OpenFile(indexFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+    if err != nil {
+        return fmt.Errorf("failed to open index file: %w", err)
+    }
+    defer f.Close()
 
+    // Write the file path to the index file
+    _, err = fmt.Fprintf(f, "%s\n", filePath)
+    if err != nil {
+        return fmt.Errorf("failed to write to index file: %w", err)
+    }
+
+    return nil
+}
+
+// CommitHandler creates a commit object, compresses the file content, stores the compressed file,
+// updates metadata, and updates the HEAD reference.
+func CommitHandler(message string) {
 	// Create the commits directory if it doesn't exist
 	commitsDir := ".gitx/commits"
 	if _, err := os.Stat(commitsDir); os.IsNotExist(err) {
@@ -258,10 +276,10 @@ func CommitHandler(message string, stagingArea *map[string]string) {
 		parentCommit = &initialCommit
 	}
 
-	// Create a tree object from the staging area files
-	tree, err := vcs_operations.CreateTreeFromStagingArea(*stagingArea)
+	// Create a tree object from the INDEX file
+	tree, err := vcs_operations.CreateTreeFromIndex(".gitx/index")
 	if err != nil {
-		log.Fatalf("Error creating tree from staging area: %v", err)
+		log.Fatalf("Error creating tree from INDEX: %v", err)
 	}
 
 	// Create a new commit object
@@ -297,6 +315,11 @@ func CommitHandler(message string, stagingArea *map[string]string) {
 		log.Fatalf("Error writing commit file: %v", err)
 	}
 
+	// Clear the INDEX file after committing
+	if err := os.Truncate(".gitx/index", 0); err != nil {
+		log.Fatalf("Error clearing INDEX file: %v", err)
+	}
+
 	// Update Metadata with the new commit
 	metadataFile := ".gitx/metadata.json"
 	if err := metadata_operations.UpdateMetadata(metadataFile, newCommit, "", ""); err != nil {
@@ -306,11 +329,6 @@ func CommitHandler(message string, stagingArea *map[string]string) {
 	// Update HEAD to point to the new commit
 	if err := vcs_operations.UpdateHEAD(newCommit.ID); err != nil {
 		log.Fatalf("Error updating HEAD: %v", err)
-	}
-
-	// Clear the staging area
-	for k := range *stagingArea {
-		delete(*stagingArea, k)
 	}
 
 	fmt.Printf("Commit created with ID: %s and message: %s\n", newCommit.ID, newCommit.Message)

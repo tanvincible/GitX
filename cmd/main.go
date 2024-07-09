@@ -5,6 +5,7 @@ import (
 	"GitX/utils/vcs_operations"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 )
@@ -46,13 +47,13 @@ func main() {
 		repoName := initCommand.Arg(0)
 		cwd, err := os.Getwd()
 		if err != nil {
-			fmt.Printf("Error getting current working directory: %v\n", err)
-			os.Exit(1)
+			log.Fatalf("Error getting current working directory: %v\n", err)
 		}
 		repoPath := filepath.Join(cwd, repoName)
 		file_operations.InitHandler(repoPath)
 
 	case "config":
+		// Handle config command
 		configCommand.Parse(os.Args[2:])
 		if len(configCommand.Args()) != 2 {
 			fmt.Println("Usage: gitx config <key> <value>")
@@ -66,19 +67,33 @@ func main() {
 		file_operations.ConfigHandlerWithFilePath(configFilePath, configKey, configValue)
 
 	case "add":
+		// Handle add command
 		if len(os.Args) < 3 {
 			fmt.Println("Error: No file path provided for the 'add' command")
 			os.Exit(1)
 		}
+	
 		// Loop through all the provided file paths
 		for _, filePath := range os.Args[2:] {
-			file_operations.AddHandler("", filePath, stagingArea)
-		}
-
+			absFilePath, err := filepath.Abs(filePath)
+			if err != nil {
+				fmt.Printf("Error getting absolute path for file '%s': %v\n", filePath, err)
+				os.Exit(1)
+			}
+			err = file_operations.AddHandler(filepath.Join(".gitx", "INDEX"), absFilePath)
+			if err != nil {
+				fmt.Printf("Error adding file '%s': %v\n", filePath, err)
+				os.Exit(1)
+			}
+		}	
+		
 	case "commit":
 		commitCommand.Parse(os.Args[2:])
-		// Commit all staged changes with the provided message
-		file_operations.CommitHandler(*commitMessage, &stagingArea)
+		if *commitMessage == "" {
+			fmt.Println("Error: Commit message is required for the 'commit' command")
+			os.Exit(1)
+		}
+		file_operations.CommitHandler(*commitMessage)
 
 	case "branch":
 		// Parse the command line arguments starting from the second argument

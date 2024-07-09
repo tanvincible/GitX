@@ -36,3 +36,16 @@ type GitXConfig struct {
 	UserEmail string `toml:"user.email"`
 	// Add other fields as needed
 }
+
+// IndexEntry represents an entry in the INDEX file.
+type IndexEntry struct {
+	Mode string `json:"mode"` // Mode field representing file mode
+	Type string `json:"type"` // Type field representing object type (blob)
+	Hash string `json:"hash"` // Hash field representing object hash
+	Path string `json:"path"` // Path field representing file path
+}
+
+// IndexFile represents the INDEX file.
+type IndexFile struct {
+	Entries []*IndexEntry `json:"entries"`
+}

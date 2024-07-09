@@ -3,6 +3,7 @@ package vcs_operations
 import (
 	"GitX/internal/hash"
 	"GitX/models"
+	"bufio"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
@@ -63,41 +64,76 @@ func GetCurrentHeadCommit() string {
 	return headContent
 }
 
-// CreateTreeFromStagingArea takes a map of file paths to their hashes and creates a Tree object.
-func CreateTreeFromStagingArea(stagingArea map[string]string) (*models.Tree, error) {
+// CreateTreeFromIndex creates a tree object from the index file.
+func CreateTreeFromIndex(indexPath string) (*models.Tree, error) {
 	tree := &models.Tree{
 		Entries: []models.TreeEntry{},
 	}
 
-	// Sort the file paths to ensure consistent tree hash
-	var paths []string
-	for path := range stagingArea {
-		paths = append(paths, path)
+	// Read the index file
+	indexEntries, err := readIndexFile(indexPath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading index file: %v", err)
 	}
-	sort.Strings(paths)
 
-	// Create TreeEntries for each file in the staging area
-	for _, path := range paths {
-		hashValue := stagingArea[path]
-		entry := models.TreeEntry{
-			Name: path,
-			Mode: "100644", // This mode represents a regular non-executable file
-			ID:   hashValue,
-			Type: "blob", // Assuming all entries are files for simplicity
+	// Sort the index entries by path to ensure consistent tree hash
+	sort.Slice(indexEntries, func(i, j int) bool {
+		return indexEntries[i].Path < indexEntries[j].Path
+	})
+
+	// Create TreeEntries for each file in the index
+	for _, entry := range indexEntries {
+		treeEntry := models.TreeEntry{
+			Name: entry.Path,
+			Mode: entry.Mode,
+			ID:   entry.Hash,
+			Type: entry.Type,
 		}
-		tree.Entries = append(tree.Entries, entry)
+		tree.Entries = append(tree.Entries, treeEntry)
 	}
 
 	// Generate the SHA-1 hash for the tree
 	hash := sha1.New()
 	for _, entry := range tree.Entries {
-		// Create a string representation of the entry for hashing
 		entryStr := fmt.Sprintf("%s %s %s\t%s", entry.Mode, entry.Type, entry.ID, entry.Name)
 		hash.Write([]byte(entryStr))
 	}
 	tree.ID = hex.EncodeToString(hash.Sum(nil))
 
 	return tree, nil
+}
+
+// readIndexFile reads and parses the index file into a slice of IndexEntry.
+func readIndexFile(indexPath string) ([]*models.IndexEntry, error) {
+	file, err := os.Open(indexPath)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open index file: %v", err)
+	}
+	defer file.Close()
+
+	var entries []*models.IndexEntry
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fields := strings.Fields(line)
+		if len(fields) != 4 {
+			return nil, fmt.Errorf("invalid index file format")
+		}
+
+		entry := &models.IndexEntry{
+			Mode: fields[0],
+			Type: fields[1],
+			Hash: fields[2],
+			Path: fields[3],
+		}
+		entries = append(entries, entry)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("error reading index file: %v", err)
+	}
+
+	return entries, nil
 }
 
 // GetCommitByHash retrieves a commit object by its hash.
