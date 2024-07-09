@@ -50,7 +50,7 @@ Use `go get` if you want to use GitX as a library in another Go project.
 1. To fetch and install GitX as a dependency, run:
 
     ```
-    go get github.com/TanviPooranmal/gitx
+    go get github.com/TanviPooranmal/GitX
     ```
 2. Import and use GitX in your Go project:
     ```go
