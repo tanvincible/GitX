@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"github.com/BurntSushi/toml"
 )
 
 // InitHandler initializes a new GitX repository by creating the necessary directories and files.
@@ -68,9 +69,14 @@ func InitHandler(directory string) {
 		log.Fatalf("Error creating ignore file: %v", err)
 	}
 
-	// Create config file
-	configFile := filepath.Join(gitxDir, "config")
-	if _, err := os.Create(configFile); err != nil {
+	// Create config file with default contents in TOML format
+	configFile := filepath.Join(gitxDir, "config.toml")
+	config := models.GitXConfig{
+		UserName:  "Your Name",
+		UserEmail: "your.email@example.com",
+	}
+	err := UpdateConfig(configFile, &config)
+	if err != nil {
 		log.Fatalf("Error creating config file: %v", err)
 	}
 
@@ -82,6 +88,95 @@ func InitHandler(directory string) {
 	}
 
 	fmt.Printf("Initialized empty repository in %s\n", directory)
+	fmt.Println("Please configure your user information using the following commands:")
+	fmt.Println("  gitx config user.name 'Your Name'")
+	fmt.Println("  gitx config user.email 'your.email@example.com'")
+}
+
+// ConfigHandler reads and updates configuration settings.
+func ConfigHandler(key, value string) {
+	configFile := filepath.Join(".gitx", "config.toml")
+
+	// Load existing config
+	config, err := LoadConfig(configFile)
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	// Update config based on the key
+	switch key {
+	case "user.name":
+		config.UserName = value
+	case "user.email":
+		config.UserEmail = value
+	default:
+		log.Fatalf("Unknown config key: %s", key)
+	}
+
+	// Write updated config back to file
+	err = UpdateConfig(configFile, config)
+	if err != nil {
+		log.Fatalf("Error updating config: %v", err)
+	}
+
+	fmt.Printf("Config updated successfully!\n")
+}
+
+// LoadConfig reads the configuration from a file.
+func LoadConfig(filePath string) (*models.GitXConfig, error) {
+	config := &models.GitXConfig{}
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		// If the config file does not exist, return an empty config with no error
+		return config, nil
+	}
+
+	if _, err := toml.DecodeFile(filePath, config); err != nil {
+		return nil, err
+	}
+	return config, nil
+}
+
+// UpdateConfig writes the updated configuration back to the file.
+func UpdateConfig(filePath string, config *models.GitXConfig) error {
+	file, err := os.Create(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	encoder := toml.NewEncoder(file)
+	if err := encoder.Encode(config); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// ConfigHandlerWithFilePath reads and updates configuration settings from the specified config file path.
+func ConfigHandlerWithFilePath(configFilePath, key, value string) {
+	// Load existing config
+	config, err := LoadConfig(configFilePath)
+	if err != nil {
+		log.Fatalf("Error loading config: %v", err)
+	}
+
+	// Update config based on the key
+	switch key {
+	case "user.name":
+		config.UserName = value
+	case "user.email":
+		config.UserEmail = value
+	default:
+		log.Fatalf("Unknown config key: %s", key)
+	}
+
+	// Write updated config back to file
+	err = UpdateConfig(configFilePath, config)
+	if err != nil {
+		log.Fatalf("Error updating config: %v", err)
+	}
+
+	fmt.Printf("Config updated successfully!\n")
 }
 
 // AddHandler adds a file to the staging area, handling paths in a cross-platform manner.

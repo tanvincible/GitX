@@ -24,6 +24,8 @@ func main() {
 
 	checkoutCommand := flag.NewFlagSet("checkout", flag.ExitOnError)
 
+	configCommand := flag.NewFlagSet("config", flag.ExitOnError)
+	
 	// Parse command-line arguments
 	flag.Parse()
 
@@ -49,6 +51,19 @@ func main() {
 		}
 		repoPath := filepath.Join(cwd, repoName)
 		file_operations.InitHandler(repoPath)
+
+	case "config":
+		configCommand.Parse(os.Args[2:])
+		if len(configCommand.Args()) != 2 {
+			fmt.Println("Usage: gitx config <key> <value>")
+			os.Exit(1)
+		}
+		configKey := configCommand.Arg(0)
+		configValue := configCommand.Arg(1)
+
+		// Ensure the command looks for the correct config file
+		configFilePath := filepath.Join(".gitx", "config.toml")
+		file_operations.ConfigHandlerWithFilePath(configFilePath, configKey, configValue)
 
 	case "add":
 		if len(os.Args) < 3 {

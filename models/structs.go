@@ -29,3 +29,10 @@ type Reflog struct {
 	Message   string
 	// Add other necessary fields here
 }
+
+// GitXConfig represents your configuration settings.
+type GitXConfig struct {
+	UserName  string `toml:"user.name"`
+	UserEmail string `toml:"user.email"`
+	// Add other fields as needed
+}
