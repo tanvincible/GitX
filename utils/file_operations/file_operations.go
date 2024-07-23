@@ -10,12 +10,12 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 	"github.com/BurntSushi/toml"
 )
 
-// InitHandler initializes a new GitX repository by creating the necessary directories and files,
-// including the INDEX file.
+// InitHandler initializes a new GitX repository by creating the necessary directories and files
 func InitHandler(directory string) {
 	// Create repository directory
 	if err := os.MkdirAll(directory, os.ModePerm); err != nil {
@@ -188,49 +188,49 @@ func ConfigHandlerWithFilePath(configFilePath, key, value string) {
 
 // AddHandler adds a file to the index for staging, following Git conventions.
 func AddHandler(indexFilePath, absFilePath string) error {
-    // Calculate the SHA-1 hash of the file
-    hashValue, err := hash.SHA1Hash(absFilePath)
-    if err != nil {
-        return fmt.Errorf("error calculating hash for file %s: %w", absFilePath, err)
-    }
+	// Calculate the SHA-1 hash of the file
+	hashValue, err := hash.SHA1Hash(absFilePath)
+	if err != nil {
+		return fmt.Errorf("error calculating hash for file %s: %w", absFilePath, err)
+	}
 
-    // Normalize the file path to use forward slashes
-    normalizedPath := filepath.ToSlash(absFilePath)
+	// Normalize the file path to use forward slashes
+	normalizedPath := filepath.ToSlash(absFilePath)
 
-    // Open the INDEX file for appending or create it if not exists
-    indexFile, err := os.OpenFile(indexFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-    if err != nil {
-        return fmt.Errorf("error opening INDEX file: %w", err)
-    }
-    defer indexFile.Close()
+	// Open the INDEX file for appending or create it if not exists
+	indexFile, err := os.OpenFile(indexFilePath, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening INDEX file: %w", err)
+	}
+	defer indexFile.Close()
 
-    // Format the entry to write into the INDEX file
-    entry := fmt.Sprintf("100644 %s %d\t%s\n", hashValue, 0, normalizedPath)
+	// Format the entry to write into the INDEX file
+	entry := fmt.Sprintf("100644 %s %d\t%s\n", hashValue, 0, normalizedPath)
 
-    // Write the entry into the INDEX file
-    if _, err := indexFile.WriteString(entry); err != nil {
-        return fmt.Errorf("error writing to INDEX file: %w", err)
-    }
+	// Write the entry into the INDEX file
+	if _, err := indexFile.WriteString(entry); err != nil {
+		return fmt.Errorf("error writing to INDEX file: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 // UpdateIndex updates the index file with the provided file path.
 func UpdateIndex(indexFile, filePath string) error {
-    // Open the index file for appending
-    f, err := os.OpenFile(indexFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-    if err != nil {
-        return fmt.Errorf("failed to open index file: %w", err)
-    }
-    defer f.Close()
+	// Open the index file for appending
+	f, err := os.OpenFile(indexFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open index file: %w", err)
+	}
+	defer f.Close()
 
-    // Write the file path to the index file
-    _, err = fmt.Fprintf(f, "%s\n", filePath)
-    if err != nil {
-        return fmt.Errorf("failed to write to index file: %w", err)
-    }
+	// Write the file path to the index file
+	_, err = fmt.Fprintf(f, "%s\n", filePath)
+	if err != nil {
+		return fmt.Errorf("failed to write to index file: %w", err)
+	}
 
-    return nil
+	return nil
 }
 
 // CommitHandler creates a commit object, compresses the file content, stores the compressed file,
@@ -242,14 +242,28 @@ func CommitHandler(message string) {
 		os.MkdirAll(commitsDir, os.ModePerm)
 	}
 
-	// Retrieve the current HEAD commit to set as the parent for the new commit
-	parentCommitHash := vcs_operations.GetCurrentHeadCommit()
-	var parentCommit *models.Commit
-	var err error
+	headFile := ".gitx/HEAD"
+	headContent, err := os.ReadFile(headFile)
+	if err != nil {
+		log.Fatalf("Error reading HEAD file: %v", err)
+	}
 
-	// Check if there is an existing parent commit
-	if parentCommitHash != "" {
-		parentCommit, err = vcs_operations.GetCommitByHash(parentCommitHash)
+	headBranch := strings.TrimSpace(strings.TrimPrefix(string(headContent), "refs/heads/"))
+	if headBranch == string(headContent) {
+		headBranch = strings.TrimSpace(string(headContent))
+	}
+
+	branchRefPath := filepath.Join(".gitx", "refs", "heads", headBranch)
+	branchRefPath = filepath.Clean(branchRefPath) // Ensure the path is clean
+
+	parentCommitHash, err := os.ReadFile(branchRefPath)
+	if err != nil {
+		log.Fatalf("Error reading branch ref file: %v", err)
+	}
+
+	var parentCommit *models.Commit
+	if len(parentCommitHash) > 0 {
+		parentCommit, err = vcs_operations.GetCommitByHash(strings.TrimSpace(string(parentCommitHash)))
 		if err != nil {
 			log.Fatalf("Error retrieving parent commit: %v", err)
 		}
@@ -267,37 +281,36 @@ func CommitHandler(message string) {
 			log.Fatalf("Error writing initial commit file: %v", err)
 		}
 
-		// Update HEAD to point to the initial commit
-		if err := vcs_operations.UpdateHEAD(initialCommit.ID); err != nil {
-			log.Fatalf("Error updating HEAD with initial commit: %v", err)
+		if err := vcs_operations.UpdateHEAD("refs/heads/main"); err != nil {
+			log.Fatalf("Error updating HEAD with main branch reference: %v", err)
 		}
 
-		// Set the initial commit as the parent
+		mainBranchRefPath := filepath.Join(".gitx", "refs", "heads", "main")
+		if err := os.WriteFile(mainBranchRefPath, []byte(initialCommit.ID), 0644); err != nil {
+			log.Fatalf("Error creating main branch ref file: %v", err)
+		}
+
 		parentCommit = &initialCommit
 	}
 
-	// Create a tree object from the INDEX file
 	tree, err := vcs_operations.CreateTreeFromIndex(".gitx/index")
 	if err != nil {
 		log.Fatalf("Error creating tree from INDEX: %v", err)
 	}
 
-	// Create a new commit object
 	newCommit := models.Commit{
-		ID:        "", // This will be generated based on the tree hash and parent
+		ID:        "",
 		Parent:    []*models.Commit{},
 		Tree:      tree,
 		Message:   message,
-		Author:    vcs_operations.GetCurrentUser(), // Implement a function to get the current user
+		Author:    vcs_operations.GetCurrentUser(),
 		Timestamp: time.Now(),
 	}
 
-	// If there is a parent commit, set it
 	if parentCommit != nil {
 		newCommit.Parent = append(newCommit.Parent, parentCommit)
 	}
 
-	// Generate the commit ID based on the tree hash, parent, author, committer, and timestamp
 	newCommit.ID, err = vcs_operations.GenerateCommitID(newCommit.Tree, newCommit.Parent, newCommit.Message, newCommit.Author, newCommit.Timestamp)
 	if err != nil {
 		log.Fatalf("Error generating commit ID: %v", err)
@@ -326,9 +339,8 @@ func CommitHandler(message string) {
 		log.Fatalf("Error updating metadata: %v", err)
 	}
 
-	// Update HEAD to point to the new commit
-	if err := vcs_operations.UpdateHEAD(newCommit.ID); err != nil {
-		log.Fatalf("Error updating HEAD: %v", err)
+	if err := os.WriteFile(branchRefPath, []byte(newCommit.ID), 0644); err != nil {
+		log.Fatalf("Error updating branch ref file: %v", err)
 	}
 
 	fmt.Printf("Commit created with ID: %s and message: %s\n", newCommit.ID, newCommit.Message)
@@ -367,26 +379,72 @@ func createInitialCommit() models.Commit {
 }
 
 // StatusHandler compares the files in the staging area with the tracked files in the metadata and the files in the working directory.
-func StatusHandler(stagingArea map[string]string) {
+func StatusHandler() {
+	// Helper function to convert to relative path
+	relativePath := func(path string) string {
+		basePath, err := os.Getwd()
+		if err != nil {
+			log.Fatalf("Error getting current working directory: %v", err)
+		}
+		relPath, err := filepath.Rel(basePath, path)
+		if err != nil {
+			return path // Fallback to absolute path if relative path computation fails
+		}
+		return relPath
+	}
+
 	// Step 1: Retrieve tracked files from metadata
 	trackedFiles, err := metadata_operations.GetTrackedFiles("metadata.json")
 	if err != nil {
 		log.Fatalf("Error retrieving tracked files: %v", err)
 	}
 
-	// Step 2: Get list of files in the working directory
+	// Step 2: Read the INDEX file to get the staging area
+	indexFile := ".gitx/index"
+	indexEntries, err := vcs_operations.ReadIndexFile(indexFile)
+	if err != nil {
+		log.Fatalf("Error reading INDEX file: %v", err)
+	}
+
+	stagingArea := make(map[string]string)
+	for _, entry := range indexEntries {
+		relPath := relativePath(entry.Path)
+		stagingArea[relPath] = entry.Hash
+	}
+
+	// Step 3: Get list of files in the working directory
 	workingDirFiles, err := getAllFilesInDir(".")
 	if err != nil {
 		log.Fatalf("Error retrieving files from working directory: %v", err)
 	}
 
-	// Step 3: Compare files
+	// Helper function to check if a file path is within the .gitx directory
+	isGitxFile := func(path string) bool {
+		return strings.HasPrefix(path, ".gitx"+string(os.PathSeparator))
+	}
+
+	// Convert tracked files to relative paths for comparison
+	relativeTrackedFiles := make(map[string]string)
+	for path, hash := range trackedFiles {
+		relPath := relativePath(path)
+		relativeTrackedFiles[relPath] = hash
+	}
+
+	fmt.Println("Tracked Files:")
+	for filePath, hashValue := range relativeTrackedFiles {
+		fmt.Printf("\t%s: %s\n", filePath, hashValue)
+	}
+
+	// Step 4: Compare files
 	fmt.Println("Changes to be committed:")
 	for filePath, hashValue := range stagingArea {
-		if _, ok := trackedFiles[filePath]; !ok {
+		if isGitxFile(filePath) {
+			continue // Skip .gitx files
+		}
+		if _, ok := relativeTrackedFiles[filePath]; !ok {
 			fmt.Printf("\tnew file: %s\n", filePath)
 		} else {
-			if hashValue != trackedFiles[filePath] {
+			if hashValue != relativeTrackedFiles[filePath] {
 				fmt.Printf("\tmodified: %s\n", filePath)
 			}
 		}
@@ -394,14 +452,18 @@ func StatusHandler(stagingArea map[string]string) {
 
 	fmt.Println("Changes not staged for commit:")
 	for _, file := range workingDirFiles {
-		if _, ok := stagingArea[file]; !ok {
+		if isGitxFile(file) {
+			continue // Skip .gitx files
+		}
+		relativeFile := relativePath(file)
+		if _, ok := stagingArea[relativeFile]; !ok {
 			if hashValue, err := hash.SHA1Hash(file); err == nil {
-				if trackedHash, ok := trackedFiles[file]; ok {
+				if trackedHash, ok := relativeTrackedFiles[relativeFile]; ok {
 					if hashValue != trackedHash {
-						fmt.Printf("\tmodified: %s\n", file)
+						fmt.Printf("\tmodified: %s\n", relativeFile)
 					}
 				} else {
-					fmt.Printf("\tuntracked: %s\n", file)
+					fmt.Printf("\tuntracked: %s\n", relativeFile)
 				}
 			} else {
 				log.Printf("Error hashing file %s: %v", file, err)

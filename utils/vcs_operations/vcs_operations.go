@@ -64,47 +64,8 @@ func GetCurrentHeadCommit() string {
 	return headContent
 }
 
-// CreateTreeFromIndex creates a tree object from the index file.
-func CreateTreeFromIndex(indexPath string) (*models.Tree, error) {
-	tree := &models.Tree{
-		Entries: []models.TreeEntry{},
-	}
-
-	// Read the index file
-	indexEntries, err := readIndexFile(indexPath)
-	if err != nil {
-		return nil, fmt.Errorf("error reading index file: %v", err)
-	}
-
-	// Sort the index entries by path to ensure consistent tree hash
-	sort.Slice(indexEntries, func(i, j int) bool {
-		return indexEntries[i].Path < indexEntries[j].Path
-	})
-
-	// Create TreeEntries for each file in the index
-	for _, entry := range indexEntries {
-		treeEntry := models.TreeEntry{
-			Name: entry.Path,
-			Mode: entry.Mode,
-			ID:   entry.Hash,
-			Type: entry.Type,
-		}
-		tree.Entries = append(tree.Entries, treeEntry)
-	}
-
-	// Generate the SHA-1 hash for the tree
-	hash := sha1.New()
-	for _, entry := range tree.Entries {
-		entryStr := fmt.Sprintf("%s %s %s\t%s", entry.Mode, entry.Type, entry.ID, entry.Name)
-		hash.Write([]byte(entryStr))
-	}
-	tree.ID = hex.EncodeToString(hash.Sum(nil))
-
-	return tree, nil
-}
-
 // readIndexFile reads and parses the index file into a slice of IndexEntry.
-func readIndexFile(indexPath string) ([]*models.IndexEntry, error) {
+func ReadIndexFile(indexPath string) ([]*models.IndexEntry, error) {
 	file, err := os.Open(indexPath)
 	if err != nil {
 		return nil, fmt.Errorf("cannot open index file: %v", err)
@@ -134,6 +95,45 @@ func readIndexFile(indexPath string) ([]*models.IndexEntry, error) {
 	}
 
 	return entries, nil
+}
+
+// CreateTreeFromIndex creates a tree object from the index file.
+func CreateTreeFromIndex(indexPath string) (*models.Tree, error) {
+	tree := &models.Tree{
+		Entries: []models.TreeEntry{},
+	}
+
+	// Read the index file
+	indexEntries, err := ReadIndexFile(indexPath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading index file: %v", err)
+	}
+
+	// Sort the index entries by path to ensure consistent tree hash
+	sort.Slice(indexEntries, func(i, j int) bool {
+		return indexEntries[i].Path < indexEntries[j].Path
+	})
+
+	// Create TreeEntries for each file in the index
+	for _, entry := range indexEntries {
+		treeEntry := models.TreeEntry{
+			Name: entry.Path,
+			Mode: entry.Mode,
+			ID:   entry.Hash,
+			Type: entry.Type,
+		}
+		tree.Entries = append(tree.Entries, treeEntry)
+	}
+
+	// Generate the SHA-1 hash for the tree
+	hash := sha1.New()
+	for _, entry := range tree.Entries {
+		entryStr := fmt.Sprintf("%s %s %s\t%s", entry.Mode, entry.Type, entry.ID, entry.Name)
+		hash.Write([]byte(entryStr))
+	}
+	tree.ID = hex.EncodeToString(hash.Sum(nil))
+
+	return tree, nil
 }
 
 // GetCommitByHash retrieves a commit object by its hash.
@@ -166,9 +166,9 @@ func GetCurrentUser() string {
 }
 
 func CreateEmptyTree() *models.Tree {
-    return &models.Tree{
-        Entries: []models.TreeEntry{},
-    }
+	return &models.Tree{
+		Entries: []models.TreeEntry{},
+	}
 }
 
 // Function to check if a branch exists by looking for its reference file
@@ -247,16 +247,19 @@ func CreateBranch(branchName string) error {
 		return fmt.Errorf("branch '%s' already exists", branchName)
 	}
 
-	// Initialize the new branch ref file with an empty content or placeholder
-	initialContent := []byte("") // Empty content since there are no commits yet
+    // Get the current HEAD commit
+    currentCommitID := GetCurrentHeadCommit()
+    if currentCommitID == "" {
+        return fmt.Errorf("no current commit found to point the branch to")
+    }
 
-	// Write the initial content to the new branch ref file
-	if err := os.WriteFile(branchRefPath, initialContent, 0644); err != nil {
-		return fmt.Errorf("error initializing branch ref file: %v", err)
-	}
+    // Write the current commit ID to the branch ref file
+    if err := os.WriteFile(branchRefPath, []byte(currentCommitID), 0644); err != nil {
+        return fmt.Errorf("error initializing branch ref file: %v", err)
+    }
 
-	fmt.Printf("Branch '%s' created successfully.\n", branchName)
-	return nil
+    fmt.Printf("Branch '%s' created successfully.\n", branchName)
+    return nil
 }
 
 // ListBranches lists all the Git branches in the repository.
@@ -301,34 +304,31 @@ func ListBranches() {
 
 // SwitchBranch switches to the specified Git branch.
 func SwitchBranch(branchName string) error {
-	if !branchExists(branchName) {
-		return fmt.Errorf("branch %s does not exist", branchName)
-	}
+    gitxDir := ".gitx"
+    refsHeadsDir := filepath.Join(gitxDir, "refs", "heads")
+    branchRefPath := filepath.Join(refsHeadsDir, branchName)
 
-	// Get the name of the current branch
-	currentBranch, err := getCurrentBranch()
-	if err != nil {
-		return err
-	}
+    // Check if the branch exists
+    if _, err := os.Stat(branchRefPath); os.IsNotExist(err) {
+        return fmt.Errorf("branch '%s' does not exist", branchName)
+    }
 
-	// Check if the target branch is the same as the current branch
-	if currentBranch == branchName {
-		fmt.Printf("Already on '%s'\n", branchName)
-		return nil
-	}
+    // Read the commit ID from the branch file
+    branchCommitID, err := os.ReadFile(branchRefPath)
+    if err != nil {
+        return fmt.Errorf("error reading branch file: %v", err)
+    }
 
-	// Path to the HEAD file
-	headPath := filepath.Join(".gitx", "HEAD")
+    // Update HEAD to point to the new branch
+    headPath := filepath.Join(gitxDir, "HEAD")
+    newHeadContent := "refs/heads/" + branchName + "\n"
 
-	// Content to write to the HEAD file, pointing to the new branch
-	newHeadContent := []byte("ref: refs/heads/" + branchName + "\n")
+    if err := os.WriteFile(headPath, []byte(newHeadContent), 0644); err != nil {
+        return fmt.Errorf("failed to update HEAD: %v", err)
+    }
 
-	// Write the new HEAD content to point to the new branch
-	if err := os.WriteFile(headPath, newHeadContent, 0644); err != nil {
-		return fmt.Errorf("failed to switch branch: %v", err)
-	}
-	fmt.Println("Switched to branch:", branchName)
-	return nil
+    fmt.Printf("Switched to branch '%s'. Current commit: %s\n", branchName, string(branchCommitID))
+    return nil
 }
 
 // DeleteBranch deletes the specified Git branch.
@@ -739,4 +739,20 @@ func displayReflog(reflogFile string) error {
 	fmt.Println("-------------------------------")
 
 	return nil
+}
+
+// CreateBranchRef creates a reference file for a branch
+func CreateBranchRef(branchName, commitID string) error {
+    branchRefPath := filepath.Join(".gitx", "refs", "heads", branchName)
+    return os.WriteFile(branchRefPath, []byte(commitID), 0644)
+}
+
+// ReadBranchRef reads the commit ID from the branch reference file
+func ReadBranchRef(branchName string) (string, error) {
+    branchRefPath := filepath.Join(".gitx", "refs", "heads", branchName)
+    content, err := os.ReadFile(branchRefPath)
+    if err != nil {
+        return "", err
+    }
+    return string(content), nil
 }

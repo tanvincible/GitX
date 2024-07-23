@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Staging area to hold files for the next commit
@@ -24,9 +25,10 @@ func main() {
 	branchDelete := branchCommand.Bool("d", false, "Delete branch")
 
 	checkoutCommand := flag.NewFlagSet("checkout", flag.ExitOnError)
+	checkoutBranch := checkoutCommand.String("b", "", "Switch to branch")
 
 	configCommand := flag.NewFlagSet("config", flag.ExitOnError)
-	
+
 	// Parse command-line arguments
 	flag.Parse()
 
@@ -72,7 +74,7 @@ func main() {
 			fmt.Println("Error: No file path provided for the 'add' command")
 			os.Exit(1)
 		}
-	
+
 		// Loop through all the provided file paths
 		for _, filePath := range os.Args[2:] {
 			absFilePath, err := filepath.Abs(filePath)
@@ -85,8 +87,8 @@ func main() {
 				fmt.Printf("Error adding file '%s': %v\n", filePath, err)
 				os.Exit(1)
 			}
-		}	
-		
+		}
+
 	case "commit":
 		commitCommand.Parse(os.Args[2:])
 		if *commitMessage == "" {
@@ -130,22 +132,37 @@ func main() {
 
 	case "checkout":
 		checkoutCommand.Parse(os.Args[2:])
-		if len(checkoutCommand.Args()) != 1 {
-			fmt.Println("Usage: gitx checkout <branch-name>")
+		if *checkoutBranch != "" {
+			branchName := *checkoutBranch
+			// Try to create the branch if it does not exist
+			err := vcs_operations.CreateBranch(branchName)
+			if err != nil && !strings.Contains(err.Error(), "already exists") {
+				fmt.Println("Error creating branch:", err)
+				os.Exit(1)
+			}
+			// Switch to the branch
+			err = vcs_operations.SwitchBranch(branchName)
+			if err != nil {
+				fmt.Println("Error switching to branch:", err)
+				os.Exit(1)
+			}
+		} else if len(checkoutCommand.Args()) != 1 {
+			fmt.Println("Usage: gitx checkout [-b] <branch-name>")
 			os.Exit(1)
-		}
-		branchName := checkoutCommand.Arg(0)
-		err := vcs_operations.SwitchBranch(branchName)
-		if err != nil {
-			fmt.Println("Error switching to branch:", err)
-			os.Exit(1)
+		} else {
+			branchName := checkoutCommand.Arg(0)
+			err := vcs_operations.SwitchBranch(branchName)
+			if err != nil {
+				fmt.Println("Error switching to branch:", err)
+				os.Exit(1)
+			}
 		}
 
 	case "log":
 		vcs_operations.LogHandler()
 
 	case "status":
-		file_operations.StatusHandler(stagingArea)
+		file_operations.StatusHandler()
 
 	case "merge":
 		// Define flags for merge command
