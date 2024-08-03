@@ -46,6 +46,11 @@ func InitHandler(directory string) {
 		log.Fatalf("Error creating refs/heads directory: %v", err)
 	}
 
+	// Verify refs/heads directory creation
+	if _, err := os.Stat(refsHeadsDir); os.IsNotExist(err) {
+		log.Fatalf("refs/heads directory does not exist after creation: %v", err)
+	}
+
 	// Create main branch file
 	mainBranchFile := filepath.Join(refsHeadsDir, "main")
 	if _, err := os.Create(mainBranchFile); err != nil {
@@ -92,6 +97,29 @@ func InitHandler(directory string) {
 	indexFile := filepath.Join(gitxDir, "INDEX")
 	if _, err := os.Create(indexFile); err != nil {
 		log.Fatalf("Error creating INDEX file: %v", err)
+	}
+
+	// Create an initial commit
+	initialCommit := createInitialCommit()
+
+	// Write the initial commit to the commits directory
+	initialCommitData, err := json.Marshal(initialCommit)
+	if err != nil {
+		log.Fatalf("Error serializing initial commit data: %v", err)
+	}
+	initialCommitFilePath := filepath.Join(commitsDir, initialCommit.ID)
+	if err := os.WriteFile(initialCommitFilePath, initialCommitData, 0644); err != nil {
+		log.Fatalf("Error writing initial commit file: %v", err)
+	}
+
+	if err := vcs_operations.UpdateHEAD("refs/heads/main"); err != nil {
+		log.Fatalf("Error updating HEAD with main branch reference: %v", err)
+	}
+
+	mainBranchRefPath := filepath.Join(gitxDir, "refs", "heads", "main")
+	fmt.Println(mainBranchRefPath)
+	if err := os.WriteFile(mainBranchRefPath, []byte(initialCommit.ID), 0644); err != nil {
+		log.Fatalf("Error creating main branch ref file: %v", err)
 	}
 
 	fmt.Printf("Initialized empty repository in %s\n", directory)
@@ -346,6 +374,7 @@ func CommitHandler(message string) {
 	fmt.Printf("Commit created with ID: %s and message: %s\n", newCommit.ID, newCommit.Message)
 }
 
+// createInitialCommit creates the initial commit for the main branch.
 func createInitialCommit() models.Commit {
 	// Create an empty tree
 	emptyTree := vcs_operations.CreateEmptyTree()
@@ -430,9 +459,15 @@ func StatusHandler() {
 		relativeTrackedFiles[relPath] = hash
 	}
 
+	// Debug print to verify tracked files and staging area
 	fmt.Println("Tracked Files:")
-	for filePath, hashValue := range relativeTrackedFiles {
-		fmt.Printf("\t%s: %s\n", filePath, hashValue)
+	for path, hash := range relativeTrackedFiles {
+		fmt.Printf("\t%s: %s\n", path, hash)
+	}
+
+	fmt.Println("Index File Entries:")
+	for _, entry := range indexEntries {
+		fmt.Printf("\t%s: %s\n", entry.Path, entry.Hash)
 	}
 
 	// Step 4: Compare files

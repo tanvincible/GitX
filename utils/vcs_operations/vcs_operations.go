@@ -30,38 +30,35 @@ func UpdateHEAD(commitHash string) error {
 
 // GetCurrentHeadCommit retrieves the current commit that HEAD is pointing to.
 func GetCurrentHeadCommit() string {
-	headFile := ".gitx/HEAD"
+	headFile := filepath.Join(".gitx", "HEAD")
 	content, err := os.ReadFile(headFile)
 	if err != nil {
-		if os.IsNotExist(err) {
-			// If the HEAD file doesn't exist, it means there are no commits yet.
-			return ""
-		}
 		log.Fatalf("Error reading HEAD file: %v", err)
 	}
 
 	headContent := string(content)
-	// Check if HEAD is a reference to a branch
-	if strings.HasPrefix(headContent, "refs/heads/") {
-		// Extract the branch name
-		branchName := strings.TrimPrefix(headContent, "refs/heads/")
-		// Check if the branch has any commits
-		branchCommitsFile := fmt.Sprintf(".gitx/refs/heads/%s", branchName)
-		if _, err := os.Stat(branchCommitsFile); os.IsNotExist(err) {
-			// If the branch commits file doesn't exist, there are no commits on this branch
-			return ""
-		} else {
-			// Read the last commit hash from the branch commits file
-			lastCommitHash, err := os.ReadFile(branchCommitsFile)
-			if err != nil {
-				log.Fatalf("Error reading branch commits file: %v", err)
-			}
-			return string(lastCommitHash)
-		}
-	}
+	// Extract the branch name
+	branchName := strings.TrimPrefix(headContent, "refs/heads/")
+	fmt.Printf("Current branch: %s\n", branchName) // Debug print
+	// Construct the path to the branch commits file
+	branchCommitsFile := filepath.Join(".gitx", "refs", "heads", branchName)
 
-	// If HEAD is not a branch reference, assume it's a commit hash
-	return headContent
+	// Clean the file path
+	branchCommitsFile = filepath.Clean(branchCommitsFile)
+	fmt.Printf("Reading commit hash from: %s\n", branchCommitsFile) // Debug print
+
+	if _, err := os.Stat(branchCommitsFile); os.IsNotExist(err) {
+		fmt.Printf("Branch commits file does not exist: %s\n", branchCommitsFile) // Debug print
+		return ""
+	} else {
+		// Read the last commit hash from the branch commits file
+		lastCommitHash, err := os.ReadFile(branchCommitsFile)
+		fmt.Printf("Last commit hash: %s\n", lastCommitHash) // Debug print
+		if err != nil {
+			log.Fatalf("Error reading branch commits file: %v", err)
+		}
+		return string(lastCommitHash)
+	}
 }
 
 // readIndexFile reads and parses the index file into a slice of IndexEntry.
@@ -247,19 +244,19 @@ func CreateBranch(branchName string) error {
 		return fmt.Errorf("branch '%s' already exists", branchName)
 	}
 
-    // Get the current HEAD commit
-    currentCommitID := GetCurrentHeadCommit()
-    if currentCommitID == "" {
-        return fmt.Errorf("no current commit found to point the branch to")
-    }
+	// Get the current HEAD commit
+	currentCommitID := GetCurrentHeadCommit()
+	if currentCommitID == "" {
+		return fmt.Errorf("no current commit found to point the branch to")
+	}
 
-    // Write the current commit ID to the branch ref file
-    if err := os.WriteFile(branchRefPath, []byte(currentCommitID), 0644); err != nil {
-        return fmt.Errorf("error initializing branch ref file: %v", err)
-    }
+	// Write the current commit ID to the branch ref file
+	if err := os.WriteFile(branchRefPath, []byte(currentCommitID), 0644); err != nil {
+		return fmt.Errorf("error initializing branch ref file: %v", err)
+	}
 
-    fmt.Printf("Branch '%s' created successfully.\n", branchName)
-    return nil
+	fmt.Printf("Branch '%s' created successfully.\n", branchName)
+	return nil
 }
 
 // ListBranches lists all the Git branches in the repository.
@@ -304,31 +301,31 @@ func ListBranches() {
 
 // SwitchBranch switches to the specified Git branch.
 func SwitchBranch(branchName string) error {
-    gitxDir := ".gitx"
-    refsHeadsDir := filepath.Join(gitxDir, "refs", "heads")
-    branchRefPath := filepath.Join(refsHeadsDir, branchName)
+	gitxDir := ".gitx"
+	refsHeadsDir := filepath.Join(gitxDir, "refs", "heads")
+	branchRefPath := filepath.Join(refsHeadsDir, branchName)
 
-    // Check if the branch exists
-    if _, err := os.Stat(branchRefPath); os.IsNotExist(err) {
-        return fmt.Errorf("branch '%s' does not exist", branchName)
-    }
+	// Check if the branch exists
+	if _, err := os.Stat(branchRefPath); os.IsNotExist(err) {
+		return fmt.Errorf("branch '%s' does not exist", branchName)
+	}
 
-    // Read the commit ID from the branch file
-    branchCommitID, err := os.ReadFile(branchRefPath)
-    if err != nil {
-        return fmt.Errorf("error reading branch file: %v", err)
-    }
+	// Read the commit ID from the branch file
+	branchCommitID, err := os.ReadFile(branchRefPath)
+	if err != nil {
+		return fmt.Errorf("error reading branch file: %v", err)
+	}
 
-    // Update HEAD to point to the new branch
-    headPath := filepath.Join(gitxDir, "HEAD")
-    newHeadContent := "refs/heads/" + branchName + "\n"
+	// Update HEAD to point to the new branch
+	headPath := filepath.Join(gitxDir, "HEAD")
+	newHeadContent := "refs/heads/" + branchName + "\n"
 
-    if err := os.WriteFile(headPath, []byte(newHeadContent), 0644); err != nil {
-        return fmt.Errorf("failed to update HEAD: %v", err)
-    }
+	if err := os.WriteFile(headPath, []byte(newHeadContent), 0644); err != nil {
+		return fmt.Errorf("failed to update HEAD: %v", err)
+	}
 
-    fmt.Printf("Switched to branch '%s'. Current commit: %s\n", branchName, string(branchCommitID))
-    return nil
+	fmt.Printf("Switched to branch '%s'. Current commit: %s\n", branchName, string(branchCommitID))
+	return nil
 }
 
 // DeleteBranch deletes the specified Git branch.
@@ -743,16 +740,16 @@ func displayReflog(reflogFile string) error {
 
 // CreateBranchRef creates a reference file for a branch
 func CreateBranchRef(branchName, commitID string) error {
-    branchRefPath := filepath.Join(".gitx", "refs", "heads", branchName)
-    return os.WriteFile(branchRefPath, []byte(commitID), 0644)
+	branchRefPath := filepath.Join(".gitx", "refs", "heads", branchName)
+	return os.WriteFile(branchRefPath, []byte(commitID), 0644)
 }
 
 // ReadBranchRef reads the commit ID from the branch reference file
 func ReadBranchRef(branchName string) (string, error) {
-    branchRefPath := filepath.Join(".gitx", "refs", "heads", branchName)
-    content, err := os.ReadFile(branchRefPath)
-    if err != nil {
-        return "", err
-    }
-    return string(content), nil
+	branchRefPath := filepath.Join(".gitx", "refs", "heads", branchName)
+	content, err := os.ReadFile(branchRefPath)
+	if err != nil {
+		return "", err
+	}
+	return string(content), nil
 }
