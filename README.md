@@ -115,7 +115,7 @@ GitX
 
 ## Documentation
 
-You can find the detailed documentation [here](https://tanvipooranmal.github.io/GitX/) and, also in the [docs\ ](https://github.com/TanviPooranmal/GitX/tree/main/docs) directory. It includes guides, references, and troubleshooting information to help you get started with `GitX`.
+You can find the detailed documentation [here](https://tanvincible.github.io/GitX/) and, also in the [docs\ ](https://github.com/tanvincible/GitX/tree/main/docs) directory. It includes guides, references, and troubleshooting information to help you get started with `GitX`.
 
 ## License
 
