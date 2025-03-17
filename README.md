@@ -27,7 +27,7 @@ To clone the repository and build the project, follow these steps:
 
 1. Clone the repository:
    ```
-   git clone https://github.com/TanviPooranmal/GitX
+   git clone https://github.com/tanvincible/GitX
    cd GitX
    ```
 2. Download the necessary dependencies:
@@ -50,14 +50,14 @@ Use `go get` if you want to use GitX as a library in another Go project.
 1. To fetch and install GitX as a dependency, run:
 
     ```
-    go get github.com/TanviPooranmal/GitX
+    go get github.com/tanvincible/GitX
     ```
 2. Import and use GitX in your Go project:
     ```go
     package main
 
     import (
-        "github.com/TanviPooranmal/GitX"
+        "github.com/tanvincible/GitX"
     )
 
     func main() {
