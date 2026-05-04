@@ -2,9 +2,6 @@
 
 GitX is a powerful version control system inspired by Git, designed to provide a simple and efficient way to manage your source code. With GitX, you can enjoy nearly all of Git's features, including support for merkle trees, compression, and metadata operations. Whether you are a solo developer or part of a team, GitX empowers you to track changes, collaborate seamlessly, and ensure the integrity of your codebase. Experience the ease and flexibility of GitX for all your version control needs.
 
-> [!IMPORTANT]
-> GitX is actively under development, and hence, it is highly unstable.
-
 ## Table of Contents
 
 - [Installation](#installation)
